@@ -1,5 +1,13 @@
 # sel2pw — Selenium Java/TestNG → Playwright TypeScript converter
 
+[![npm version](https://img.shields.io/npm/v/@vijaypjavvadi/sel2pw.svg?logo=npm&color=cb3837)](https://www.npmjs.com/package/@vijaypjavvadi/sel2pw)
+[![npm downloads](https://img.shields.io/npm/dm/@vijaypjavvadi/sel2pw.svg?logo=npm)](https://www.npmjs.com/package/@vijaypjavvadi/sel2pw)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/javvadivijayprasad/sel2pw/actions/workflows/ci.yml/badge.svg)](https://github.com/javvadivijayprasad/sel2pw/actions/workflows/ci.yml)
+[![Release](https://github.com/javvadivijayprasad/sel2pw/actions/workflows/release.yml/badge.svg)](https://github.com/javvadivijayprasad/sel2pw/actions/workflows/release.yml)
+[![Node](https://img.shields.io/node/v/@vijaypjavvadi/sel2pw.svg?logo=node.js)](https://nodejs.org/)
+[![codebases validated](https://img.shields.io/badge/codebases%20validated-15-brightgreen)](./STATUS.md)
+
 Most teams are migrating off `selenium-java + TestNG` (and their BDD/Cucumber and C#/SpecFlow cousins) onto Playwright. The painful part isn't writing new tests — it's the *thousands of existing ones* you can't afford to throw away.
 
 `sel2pw` is a CLI **and a platform service** that takes a Java/Selenium/TestNG project and emits an equivalent Playwright TypeScript project, plus a markdown review report listing everything a human still needs to look at.
