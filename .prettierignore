@@ -1,0 +1,5 @@
+node_modules
+dist
+examples/output-playwright
+*.log
+.sel2pw

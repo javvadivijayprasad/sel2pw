@@ -1,0 +1,71 @@
+# sel2pw.config.yaml — sample configuration shipped alongside sel2pw.exe.
+#
+# Either edit this file in place and pass it via --config sel2pw.config.yaml,
+# OR rely on the env-var equivalents listed in each section. Env vars
+# always win over file values.
+
+# ----------------------------------------------------------------------
+# Output behaviour
+# ----------------------------------------------------------------------
+output:
+  # Wrap locator initialisers in `healOrThrow(page, ...)` so the converted
+  # suite plugs into self-healing-stage-services at runtime.
+  emit_self_healing_shim: false
+
+  # Generate tests/auth.setup.ts when sel2pw detects a LoginPage with a
+  # login(username, password) method.
+  emit_auth_setup: false
+
+  # Run Prettier over the generated TS (requires prettier locally).
+  format: false
+
+  # Run `tsc --noEmit` over the generated project as a gate.
+  validate: false
+
+  # Insert `// TODO(sel2pw): ...` markers near manual review items.
+  todo_markers: true
+
+  # Page Object emission style: instance | factory.
+  pom_style: instance
+
+# ----------------------------------------------------------------------
+# Source language (auto-detect when omitted)
+# ----------------------------------------------------------------------
+# lang: java       # or csharp; auto-detect when commented out
+
+# ----------------------------------------------------------------------
+# AI governance — sanitise payloads before any LLM call
+# ----------------------------------------------------------------------
+# Env: AI_GOVERNANCE_SIDECAR_URL
+governance:
+  sidecar_url: "http://localhost:4900"
+  # config_url: "file:///etc/governance/ai-quality.config.yaml"
+
+# ----------------------------------------------------------------------
+# LLM fallback (optional) — for files the AST pipeline can't classify
+# ----------------------------------------------------------------------
+# Disabled by default. To enable, uncomment provider + key.
+# llm:
+#   enabled: true
+#   provider: anthropic            # anthropic | openai | gemini
+#   model: claude-sonnet-4-6       # provider-specific
+#   # key from env: ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY
+
+# ----------------------------------------------------------------------
+# Telemetry (local-only by default)
+# ----------------------------------------------------------------------
+# SQLite database path. Set to false to disable telemetry entirely.
+# Env: SEL2PW_TELEMETRY_DB
+telemetry:
+  db: ".sel2pw/telemetry.db"
+  # Opt-in aggregate upload (no source content sent — see CHANGELOG 0.9.0).
+  # share_endpoint: "https://telemetry.sel2pw.dev/aggregate"
+  # share_api_key: ""
+
+# ----------------------------------------------------------------------
+# Logging
+# ----------------------------------------------------------------------
+# Env: LOG_LEVEL (trace|debug|info|warn|error|fatal), LOG_PRETTY=1
+logging:
+  level: info
+  pretty: false

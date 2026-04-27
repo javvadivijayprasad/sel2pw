@@ -1,0 +1,46 @@
+# Converter service — copy/merge into the platform's docker-compose.dev.yml.
+#
+# Two services:
+#   - converter (sel2pw)      port 4200
+#   - ai-governance-sidecar   port 4900  (shared with other services)
+#
+# Both volumes mount a shared `governance-config` directory so the same
+# ai-quality.config.yaml drives every consumer.
+
+services:
+  converter:
+    build:
+      context: ../../EB1A_Research/Converter      # adjust to your monorepo layout
+      dockerfile: Dockerfile
+    container_name: sel2pw-converter
+    image: platform/sel2pw:dev
+    ports:
+      - "4200:4200"
+    environment:
+      PORT: "4200"
+      SEL2PW_WORK_DIR: /var/sel2pw
+      AI_GOVERNANCE_SIDECAR_URL: http://ai-governance-sidecar:4900
+      CONVERTER_WEBHOOK_SECRET: ${CONVERTER_WEBHOOK_SECRET:-dev-secret}
+    volumes:
+      - sel2pw-state:/var/sel2pw
+      - ./shared/governance:/etc/governance:ro
+    depends_on:
+      - ai-governance-sidecar
+    restart: unless-stopped
+
+  ai-governance-sidecar:
+    build:
+      context: ../../EB1A_Research/ai-governance
+      dockerfile: service/Dockerfile
+    container_name: ai-governance-sidecar
+    image: platform/ai-governance-sidecar:dev
+    ports:
+      - "4900:4900"
+    environment:
+      AI_GOVERNANCE_VERSION: "0.1.0"
+    volumes:
+      - ./shared/governance:/etc/governance:ro
+    restart: unless-stopped
+
+volumes:
+  sel2pw-state:

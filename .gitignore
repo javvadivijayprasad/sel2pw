@@ -1,0 +1,28 @@
+node_modules/
+dist/
+dist-exe/
+*.log
+.DS_Store
+.idea/
+.vscode/
+coverage/
+examples/output-playwright/
+*.tsbuildinfo
+
+# Local runtime state
+.sel2pw/
+.env
+.env.local
+jobs/
+*.sqlite
+*.sqlite-journal
+*.db
+
+# Build artefacts not meant for git
+*.exe
+build/_pkg-temp-*
+
+# OS / editor noise
+Thumbs.db
+.vs/
+*.swp

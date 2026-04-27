@@ -1,0 +1,123 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`emitter snapshots — bundled sample > HomePage TS matches snapshot 1`] = `
+"import { Page, Locator, expect } from '@playwright/test';
+
+export class HomePage {
+  readonly page: Page;
+  readonly welcomeBanner: Locator;
+  readonly logoutLink: Locator;
+  readonly searchInput: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.welcomeBanner = page.locator("#welcome");
+    this.logoutLink = page.getByRole('link', { name: "Sign out" });
+    this.searchInput = page.locator("[name=\\"q\\"]");
+  }
+
+  async getWelcomeText(): Promise<string> {
+    return await this.welcomeBanner.innerText();
+  }
+
+  async isLogoutVisible(): Promise<boolean> {
+    return await this.logoutLink.isVisible();
+  }
+
+  async search(query: string): Promise<void> {
+    await this.searchInput.clear();
+    await this.searchInput.fill(query);
+  }
+
+  async logout(): Promise<void> {
+    await this.logoutLink.click();
+  }
+}
+"
+`;
+
+exports[`emitter snapshots — bundled sample > LoginPage TS matches snapshot 1`] = `
+"import { Page, Locator, expect } from '@playwright/test';
+
+export class LoginPage {
+  readonly page: Page;
+  readonly usernameInput: Locator;
+  readonly passwordInput: Locator;
+  readonly loginButton: Locator;
+  readonly errorBanner: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.usernameInput = page.locator("#username");
+    this.passwordInput = page.locator("#password");
+    this.loginButton = page.locator("button[type='submit']");
+    this.errorBanner = page.locator("xpath=//div[@class='error']");
+  }
+
+  async open(baseUrl: string): Promise<void> {
+    await this.page.goto(baseUrl + "/login");
+  }
+
+  async enterUsername(username: string): Promise<void> {
+    await this.usernameInput.fill(username);
+  }
+
+  async enterPassword(password: string): Promise<void> {
+    await this.passwordInput.fill(password);
+  }
+
+  async clickLogin(): Promise<void> {
+    await this.loginButton.click();
+  }
+
+  async getErrorMessage(): Promise<string> {
+    return await this.errorBanner.innerText();
+  }
+
+  async login(username: string, password: string): Promise<void> {
+    await this.enterUsername(username);
+    await this.enterPassword(password);
+    await this.clickLogin();
+  }
+}
+"
+`;
+
+exports[`emitter snapshots — bundled sample > LoginTest spec matches snapshot 1`] = `
+"import { test, expect } from '@playwright/test';
+import { LoginPage } from '../pages/login.page';
+import { HomePage } from '../pages/home.page';
+
+test.describe('LoginTest', () => {
+  let loginPage: LoginPage;
+  let homePage: HomePage;
+
+  test.beforeEach(async ({ page }) => {
+    loginPage = new LoginPage(page);
+    homePage = new HomePage(page);
+    await loginPage.open("https://example.com");
+  });
+
+  // groups: smoke
+  test("valid credentials log the user in", async ({ page }) => {
+    await loginPage.login("alice", "correct-horse");
+    const welcome = await homePage.getWelcomeText();
+    expect(welcome).toBe("Welcome, alice!");
+    expect(await homePage.isLogoutVisible()).toBe(true);
+  });
+
+  test("invalid credentials show an error", async ({ page }) => {
+    await loginPage.login("alice", "wrong-password");
+    const error = await loginPage.getErrorMessage();
+    expect(error).toBe("Invalid username or password");
+  });
+
+  test("search after login works", async ({ page }) => {
+    await loginPage.login("alice", "correct-horse");
+    await homePage.search("playwright migration");
+    expect(await homePage.isLogoutVisible()).toBe(true);
+  });
+
+});
+"
+`;

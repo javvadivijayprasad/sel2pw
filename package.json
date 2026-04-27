@@ -1,0 +1,95 @@
+{
+  "name": "@vijaypjavvadi/sel2pw",
+  "version": "0.10.3",
+  "description": "Convert Java + Selenium + TestNG test suites to Playwright TypeScript (rule-based, AST-driven). Supports Selenium Java, C# NUnit, Cucumber BDD, SpecFlow with optional LLM fallback (Anthropic / OpenAI / Gemini).",
+  "bin": {
+    "sel2pw": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "templates",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/javvadivijayprasad/sel2pw.git"
+  },
+  "homepage": "https://github.com/javvadivijayprasad/sel2pw#readme",
+  "bugs": {
+    "url": "https://github.com/javvadivijayprasad/sel2pw/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:exe": "node build/build-exe.js",
+    "start": "node dist/cli.js",
+    "serve": "node dist/server.js",
+    "dev": "ts-node src/cli.ts",
+    "dev:serve": "ts-node src/server.ts",
+    "convert:sample": "ts-node src/cli.ts convert ./examples/selenium-testng-sample --out ./examples/output-playwright",
+    "smoke": "node scripts/e2e-smoke.js",
+    "find-stubs": "node scripts/find-stub-callers.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
+    "test:update": "vitest run -u",
+    "lint": "eslint . --ext .ts && tsc --noEmit",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\""
+  },
+  "keywords": [
+    "selenium",
+    "playwright",
+    "testng",
+    "migration",
+    "test-automation",
+    "converter",
+    "java-to-typescript"
+  ],
+  "author": {
+    "name": "Vijay Prasad",
+    "email": "jvijayprasad@gmail.com",
+    "url": "https://github.com/javvadivijayprasad"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
+    "archiver": "^7.0.1",
+    "chalk": "^4.1.2",
+    "commander": "^12.1.0",
+    "express": "^4.19.2",
+    "fast-glob": "^3.3.2",
+    "fs-extra": "^11.2.0",
+    "java-parser": "^2.3.2",
+    "pino": "^9.0.0",
+    "undici": "^6.19.0"
+  },
+  "optionalDependencies": {
+    "@yao-pkg/pkg": "^5.16.0",
+    "better-sqlite3": "^11.0.0",
+    "pino-pretty": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/archiver": "^6.0.2",
+    "@types/express": "^4.17.21",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.12.0",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "@vitest/coverage-v8": "^1.6.0",
+    "@yao-pkg/pkg": "^6.19.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

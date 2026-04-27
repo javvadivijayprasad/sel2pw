@@ -1,0 +1,24 @@
+{
+  "$comment": "pkg build config for sel2pw.exe — see build/build-exe.js",
+  "name": "sel2pw",
+  "main": "../dist/cli.js",
+  "bin": "../dist/cli.js",
+  "pkg": {
+    "$comment": "Files / directories bundled into the binary's virtual filesystem.",
+    "assets": [
+      "../templates/**/*",
+      "../examples/selenium-testng-sample/**/*",
+      "../package.json"
+    ],
+    "scripts": [
+      "../dist/**/*.js"
+    ],
+    "targets": [
+      "node18-win-x64",
+      "node18-linux-x64",
+      "node18-macos-x64"
+    ],
+    "outputPath": "../dist-exe",
+    "compress": "Brotli"
+  }
+}

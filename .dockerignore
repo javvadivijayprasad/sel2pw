@@ -1,0 +1,9 @@
+node_modules
+dist
+.git
+.idea
+.vscode
+examples/output-playwright
+**/*.log
+*.tsbuildinfo
+.sel2pw
