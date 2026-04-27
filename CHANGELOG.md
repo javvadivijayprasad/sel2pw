@@ -4,6 +4,21 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [0.10.4] — Patch (CLI version sync + deploy workflow gating)
+
+Two small follow-ups discovered immediately after the v0.10.3 publish:
+
+**Bug fix — `sel2pw --version` reported `0.1.0`** instead of the actual installed version. The CLI had a hardcoded `.version("0.1.0")` string in `src/cli.ts` that was never bumped through any of the 0.2 → 0.10 releases. Replaced with a `readVersion()` helper that reads from `package.json` at runtime, so the CLI version always matches the npm version. No more hand-sync between package.json and CLI source.
+
+**CI hygiene — `deploy.yml` no longer fires on every push to `main`.** The deploy workflow uses `appleboy/ssh-action` and requires `VPS_HOST` / `VPS_USER` / `VPS_PASSWORD` secrets that aren't configured yet. Trigger changed from `push: branches: [main]` to `workflow_dispatch` only, so the workflow exists and runs on demand once VPS secrets are set up, but doesn't auto-fail every push in the meantime.
+
+### Files changed
+- `src/cli.ts` — `readVersion()` helper, drops hardcoded version
+- `package.json` — bump to 0.10.4
+- `.github/workflows/deploy.yml` — manual-trigger only
+
+---
+
 ## [0.10.3] — Verified ✅ (prefixed-Driver / Actions wrappers — selenium8 fully classified)
 
 selenium8 final stats after this patch landed:

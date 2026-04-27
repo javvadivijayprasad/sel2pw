@@ -2,7 +2,27 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import * as path from "path";
+import * as fs from "fs";
 import { convert, analyze } from "./index";
+
+// Read version from package.json at runtime so we never have to hand-sync
+// the CLI version with package.json again. Falls back to "unknown" if the
+// file isn't reachable (e.g. weird bundler layouts) — better than lying.
+function readVersion(): string {
+  const candidates = [
+    path.join(__dirname, "..", "package.json"),
+    path.join(__dirname, "..", "..", "package.json"),
+  ];
+  for (const p of candidates) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(p, "utf8"));
+      if (pkg && typeof pkg.version === "string") return pkg.version;
+    } catch {
+      // try next candidate
+    }
+  }
+  return "unknown";
+}
 
 const program = new Command();
 
@@ -11,7 +31,7 @@ program
   .description(
     "Convert Java + Selenium + TestNG test suites into a Playwright TypeScript project.",
   )
-  .version("0.1.0");
+  .version(readVersion());
 
 program
   .command("convert")
