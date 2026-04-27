@@ -4,6 +4,14 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [0.10.5] — 7 new codebases validated, 0 failures
+
+Same patch set previously planned for 0.10.4, but 0.10.4 went out to npm before the four selenium9–15 patches landed (it shipped the CLI version fix + deploy gating only). Bumping to 0.10.5 so the selenium patches can be published — npm forbids version reuse.
+
+The four bug fixes from selenium9–15 validation (kebab lookup, classname reserved-word filter, detector pattern widening, BaseTest annotation-aware regex) all land in this release. See full details below — they're the same patches described in the original 0.10.4 plan.
+
+---
+
 ## [0.10.4] — Patch (CLI version sync + 7 new codebases validated)
 
 **Validation matrix doubled from 8 → 15 real-world codebases** (313 Java files total). selenium9–15 added in this release. Failures discovered in the new batch became four targeted patches, all shipped here.
