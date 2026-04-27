@@ -88,10 +88,16 @@ export function buildConversionResult(args: BuildResultArgs): ConversionResultJs
   // emitted file paths are kebab-cased (login-tests.spec.ts, action-driver.page.ts)
   // while the IR carries the original PascalCase class name. Both sides
   // get kebab-normalised so lookups match.
+  // Stem extraction also covers `tests/fixtures.ts` (no `.spec`/`.page`
+  // segment) so base test files are findable — see selenium13/14/15 which
+  // had BaseTest/TestBase reported as failed pre-fix.
   const convertedByStem = new Map<string, ConvertedFile>();
   for (const cf of convertedFiles) {
-    const stem = path.basename(cf.relPath).replace(/\.(page|spec)\.ts$/, "");
-    convertedByStem.set(stem.toLowerCase(), cf);
+    const stem = path
+      .basename(cf.relPath, ".ts")
+      .replace(/\.(page|spec)$/, "")
+      .toLowerCase();
+    convertedByStem.set(stem, cf);
   }
 
   const files: FileOutcome[] = scannedFiles.map((f) => fileOutcomeFor(f, warnings, convertedByStem));
@@ -139,7 +145,18 @@ function fileOutcomeFor(
   // Did anything land in the output for this file? Kebab-normalise the
   // class name so it matches the emitted file's basename (which uses
   // kebab-case: ActionDriver -> action-driver.page.ts).
-  const stem = kebab(file.className.replace(/(Pages?|Tests?|TestCase)$/, ""));
+  //
+  // Mirrors the emitter-side naming logic (src/utils/naming.ts):
+  //   - base test files emit to a fixed `tests/fixtures.ts` regardless
+  //     of class name, so map base-kind files straight to "fixtures".
+  //   - test classes: kebab then strip trailing `-test(s)`/`-test-case`
+  //     (so LoginTests -> login, API_Test -> api).
+  //   - page objects: kebab then strip trailing `-page(s)`.
+  // Pre-fix this used a PascalCase strip-then-kebab order which leaked
+  // a trailing dash on names like `API_Test` (see selenium12 + 15).
+  const stem = file.kind === "base"
+    ? "fixtures"
+    : kebab(file.className).replace(/-(tests?(?:-?case)?|pages?)$/, "");
   const matched = convertedByStem.get(stem);
 
   if (file.kind === "unknown") {
@@ -232,5 +249,15 @@ function isProjectWide(file: string): boolean {
 }
 
 function kebab(s: string): string {
-  return s.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+  // Mirror src/utils/naming.ts → toKebabCase: replace camel-case boundaries
+  // AND collapse underscore/whitespace runs to dashes. Without the
+  // underscore handling, source files with underscore-prefixed class
+  // names (`_01_Intro`) wouldn't match the kebab-cased emitter output
+  // (`-01-intro.spec.ts`), and every such file showed as "failed" in
+  // conversion-result.json even though the file was emitted correctly.
+  // Bug surfaced in selenium10/11 (46 false failures) — fix in 0.10.4.
+  return s
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/[_\s]+/g, "-")
+    .toLowerCase();
 }

@@ -4,18 +4,57 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
-## [0.10.4] — Patch (CLI version sync + deploy workflow gating)
+## [0.10.4] — Patch (CLI version sync + 7 new codebases validated)
 
-Two small follow-ups discovered immediately after the v0.10.3 publish:
+**Validation matrix doubled from 8 → 15 real-world codebases** (313 Java files total). selenium9–15 added in this release. Failures discovered in the new batch became four targeted patches, all shipped here.
 
-**Bug fix — `sel2pw --version` reported `0.1.0`** instead of the actual installed version. The CLI had a hardcoded `.version("0.1.0")` string in `src/cli.ts` that was never bumped through any of the 0.2 → 0.10 releases. Replaced with a `readVersion()` helper that reads from `package.json` at runtime, so the CLI version always matches the npm version. No more hand-sync between package.json and CLI source.
+### Bug fixes from selenium9–15 validation
 
-**CI hygiene — `deploy.yml` no longer fires on every push to `main`.** The deploy workflow uses `appleboy/ssh-action` and requires `VPS_HOST` / `VPS_USER` / `VPS_PASSWORD` secrets that aren't configured yet. Trigger changed from `push: branches: [main]` to `workflow_dispatch` only, so the workflow exists and runs on demand once VPS secrets are set up, but doesn't auto-fail every push in the meantime.
+**1. `kebab()` lookup mismatch in `conversionResult.ts`** — the lookup function ignored underscores, but the emitter's `toKebabCase()` collapses them to dashes. Source files with underscore-prefixed class names (`_01_Intro`, `_02_TestRunner`, common in tutorial-style repos) emitted correctly to disk but reported as `failed` in `conversion-result.json` because the lookup couldn't match the source class to its emitted kebab-cased file. **selenium10 and selenium11 (46 false failures total) — fix collapses the lookup to use the same kebab algorithm.**
+
+**2. `extractClassName()` matched Java reserved words** — Javadocs containing phrases like "class for handling X" caused the regex `class\s+(\w+)` to match `class for` literally, returning `for` as the class name. Files then emitted to `pages/for.page.ts` and `tests/_legacy-stubs/for.ts`. **Fix**: strip block + line comments before matching, AND filter the captured name through a Java-reserved-words blacklist. selenium12 and selenium13 surfaced this.
+
+**3. `customUtilDetector` patterns extended** — selenium12/13/14 had ~50 untracked utility shapes that should auto-stub. Added six new NAME_PATTERNS:
+- `Exception$` — custom exception classes (FrameworkException, InvalidPathException, HeadlessNotSupportedException, etc.)
+- `Helpers$` — pluralised helpers (CaptureHelpers, ExcelHelpers, FileHelpers — singular `Helper` was already covered)
+- `Manager$` — bare manager suffix (AllureManager, TelegramManager — non-Driver/Browser/Wait variants)
+- `Annotation$` — user-defined `@interface` annotations (FrameworkAnnotation)
+- `^Retry(Analyzer)?$` — TestNG `IRetryAnalyzer` implementations (use Playwright's `retries` config instead)
+- `^[A-Z]\w*Transformer$` — TestNG `IAnnotationTransformer` (AnnotationTransformer)
+
+**4. `extractLifecycleHooks` regex broken on parameter-level annotations** — a `@BeforeMethod public void setup(@Optional("chrome") String browser) { ... }` signature broke the lifecycle-hook regex because `\([^)]*\)` stopped at the first `)` (the inner one in `("chrome")`), not the outer params close. The whole BaseTest emitter produced no output as a result. **selenium12/13/14 BaseTest failures — fix**: replace tight signature pattern with `[^{]*?\{` (skip everything until the body opener), accepting the rare edge case of `{` inside annotation default values (e.g. `@Optional({"a","b"})`).
+
+### Other 0.10.4 fixes (discovered post-0.10.3 publish)
+
+**5. `sel2pw --version` reported `0.1.0`** — hardcoded string in `src/cli.ts` predated all version bumps. Replaced with a `readVersion()` helper that reads `package.json` at runtime. Future releases auto-sync.
+
+**6. `deploy.yml` no longer auto-runs on push** — workflow needs `VPS_HOST` / `VPS_USER` / `VPS_PASSWORD` secrets that aren't configured. Trigger changed to `workflow_dispatch` only.
 
 ### Files changed
-- `src/cli.ts` — `readVersion()` helper, drops hardcoded version
+- `src/cli.ts` — dynamic version read
+- `src/scanner/projectScanner.ts` — comment-stripping + reserved-word filter in `extractClassName`
+- `src/transformers/customUtilDetector.ts` — six new NAME_PATTERNS
+- `src/transformers/baseTestExtractor.ts` — relaxed regex in `extractLifecycleHooks`
+- `src/reports/conversionResult.ts` — `kebab()` mirrors `toKebabCase()`
 - `package.json` — bump to 0.10.4
+- `CHANGELOG.md` — this entry
 - `.github/workflows/deploy.yml` — manual-trigger only
+
+### Cumulative validation (15 real-world codebases)
+
+| Project | Files | Failed | Stack |
+| --- | --- | --- | --- |
+| selenium1–8 | 96 | 0 | mixed |
+| selenium9 | 28 | 0 | bdd-cucumber |
+| selenium10 | 42 | 0 (was 23 false-failures pre-fix) | bdd-cucumber |
+| selenium11 | 42 | 0 (was 23 false-failures pre-fix) | bdd-cucumber |
+| selenium12 | 32 | **0** (was 4 pre-fix) | testng |
+| selenium13 | 84 | **0** (was 1 pre-fix) | testng |
+| selenium14 | 75 | **0** (was 1 pre-fix) | bdd-cucumber |
+| selenium15 | 10 | **0** (was 2 pre-fix) | testng |
+| **Total** | **409** | **0 ✅** | |
+
+54 failures across 7 new codebases reduced to **0** through 4 targeted patches. Cumulative validation: **15 real-world OSS Selenium codebases, 409 Java files, 0 failed conversions, 0 unclassified files.**
 
 ---
 

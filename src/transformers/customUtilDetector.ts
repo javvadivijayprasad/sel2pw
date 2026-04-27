@@ -112,6 +112,28 @@ const NAME_PATTERNS: { pattern: RegExp; kind: DetectedUtility["kind"] }[] = [
     pattern: /^(Test|Common|File|Json|Xml|Excel|Db|Database|Selenium|String|Date|Property|Properties)(Util|Utils|Helper|Reader|Loader|Manager)?$/,
     kind: "test-util",
   },
+  // Custom Java exception classes (FrameworkException, InvalidPathException,
+  // HeadlessNotSupportedException, etc.). selenium13 has 8 of these.
+  // They're not test code — emit as test-util stubs with appropriate guidance.
+  { pattern: /Exception$/, kind: "test-util" },
+  // Pluralised helper / manager / util suffixes (CaptureHelpers, ExcelHelpers,
+  // FileHelpers, AllureManager, TelegramManager). The earlier broad rule
+  // covers the singular `Helper` but not `Helpers`. Same for the bare
+  // `Manager` suffix without a Driver/Browser/Wait prefix.
+  { pattern: /Helpers$/, kind: "test-util" },
+  { pattern: /Manager$/, kind: "test-util" },
+  // Annotation classes (@interface FrameworkAnnotation { ... }) — not
+  // executable test code; user-defined annotations have no Playwright
+  // analogue and almost always need to be deleted or converted to a
+  // TS decorator manually.
+  { pattern: /Annotation$/, kind: "test-util" },
+  // RetryAnalyzer / Retry — TestNG's IRetryAnalyzer interface. Not
+  // executable test code; emit as event-listener stub with guidance to
+  // use Playwright's `retries` config instead.
+  { pattern: /^Retry(Analyzer)?$/, kind: "event-listener" },
+  // Annotation transformers (TestNG IAnnotationTransformer). Generic name
+  // pattern that doesn't end in *Listener but lives in the listener bag.
+  { pattern: /^[A-Z]\w*Transformer$/, kind: "reporter" },
 ];
 
 const SHAPE_PATTERNS: { pattern: RegExp; kind: DetectedUtility["kind"] }[] = [

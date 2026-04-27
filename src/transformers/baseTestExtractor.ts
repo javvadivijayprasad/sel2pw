@@ -147,8 +147,19 @@ function stripDriverBoilerplate(body: string): string {
 
 function extractLifecycleHooks(source: string): ExtractedHook[] {
   const out: ExtractedHook[] = [];
-  const re =
-    /@(Before|After)(Suite|Class|Method|Test)\s*(?:\([^)]*\))?\s*(?:public|protected|private)?\s+(?:static\s+)?\w[\w<>]*\s+\w+\s*\([^)]*\)\s*(?:throws\s+[\w.,\s]+)?\s*\{/g;
+  // Permissive: skip *anything* between the @Before/@After annotation and
+  // the opening `{`. The previous tighter pattern explicitly modelled the
+  // method signature (`\([^)]*\)`), which broke on parameter-level
+  // annotations like `@Optional("chrome") String browser` — the inner
+  // `("chrome")` parens prematurely closed the outer params group, the
+  // signature didn't match, and the whole BaseTest emitter produced no
+  // output. selenium12/13/14 surfaced this — fix in 0.10.4.
+  //
+  // Caveat: an `{` inside an annotation default value (e.g.
+  // `@Optional({"a", "b"})`) would be interpreted as the body opener.
+  // Vanishingly rare in @BeforeMethod / @AfterMethod context — accept as
+  // a known edge case.
+  const re = /@(Before|After)(Suite|Class|Method|Test)\b[^{]*?\{/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(source)) !== null) {
     const kind: "before" | "after" =

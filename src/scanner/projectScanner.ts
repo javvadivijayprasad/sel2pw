@@ -58,11 +58,41 @@ function extractPackageName(source: string): string {
   return m ? m[1] : "";
 }
 
+// Java reserved words — these cannot be class names. If the regex below
+// captures one of these (most commonly happens when a Javadoc says
+// "class for handling X" — matching `class for` literally), reject and
+// fall through to the next match (or fall back to the file basename).
+const JAVA_RESERVED = new Set([
+  "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char",
+  "class", "const", "continue", "default", "do", "double", "else", "enum",
+  "extends", "final", "finally", "float", "for", "goto", "if", "implements",
+  "import", "instanceof", "int", "interface", "long", "native", "new", "null",
+  "package", "private", "protected", "public", "return", "short", "static",
+  "strictfp", "super", "switch", "synchronized", "this", "throw", "throws",
+  "transient", "true", "false", "try", "void", "volatile", "while", "yield",
+  "record", "sealed", "permits", "var",
+]);
+
 function extractClassName(source: string): string | null {
-  // Capture the first top-level public class / class.
-  // Accepts lowercase first-char names too (rare but real — `class test {}`).
-  const m = source.match(/\b(?:public\s+)?(?:abstract\s+)?(?:class|enum|interface)\s+(\w[\w$]*)/);
-  return m ? m[1] : null;
+  // Strip block comments (Javadoc) and line comments before pattern-matching.
+  // Javadocs frequently contain phrases like "class for handling X" which
+  // would falsely match the class-declaration regex below, returning "for"
+  // as the class name (selenium12/13 made this bug visible — fix in 0.10.4).
+  const stripped = source
+    .replace(/\/\*[\s\S]*?\*\//g, "")  // block / Javadoc comments
+    .replace(/\/\/[^\n]*/g, "");       // line comments
+
+  // Find ALL declarations and return the first one whose captured name is
+  // not a Java reserved word. Belt-and-suspenders on top of the comment
+  // strip — strings like `"class for X"` could still sneak through, but
+  // the reserved-word filter catches the common cases.
+  const re = /\b(?:public\s+|protected\s+|private\s+|abstract\s+|final\s+|static\s+)*(?:class|enum|interface)\s+(\w[\w$]*)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(stripped)) !== null) {
+    const name = m[1];
+    if (!JAVA_RESERVED.has(name)) return name;
+  }
+  return null;
 }
 
 function classify(className: string, source: string): SourceKind {
