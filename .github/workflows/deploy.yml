@@ -1,8 +1,8 @@
 name: Deploy to Production
 
 on:
-  push:
-    branches: [main]
+  # Manual-only until VPS secrets (VPS_HOST, VPS_USER, VPS_PASSWORD) are configured
+  # in repo Settings → Secrets and variables → Actions. Then re-add `push: branches: [main]`.
   workflow_dispatch: {}
 
 jobs:
