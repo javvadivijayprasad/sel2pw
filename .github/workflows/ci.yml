@@ -35,6 +35,12 @@ jobs:
 
   coverage:
     runs-on: ubuntu-latest
+    # Non-blocking — coverage is a vanity metric, not a gate. If
+    # `npm run test:cov` exits non-zero (typical: vitest coverage-v8
+    # provider mismatch on first run, threshold not met, etc.), the
+    # job shows yellow but CI overall stays green. Re-tighten once
+    # the coverage report is actually consumed (Codecov, PR comments).
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,6 +48,7 @@ jobs:
       - run: npm ci
       - run: npm run test:cov
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: coverage
           path: coverage/

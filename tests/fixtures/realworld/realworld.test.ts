@@ -28,6 +28,10 @@ describe("real-world fixtures", () => {
       await convert({
         inputDir: path.join(FIXTURE_ROOT, "page-factory", "input"),
         outputDir,
+        // Disable telemetry SQLite — parallel beforeAll hooks would race
+        // for the same default `.sel2pw/telemetry.db` and hit SQLITE_BUSY
+        // on slower-IO CI runners (macos/Node-18, windows/Node-22).
+        telemetryDb: false,
       });
     });
 
@@ -60,6 +64,7 @@ describe("real-world fixtures", () => {
       await convert({
         inputDir: path.join(FIXTURE_ROOT, "hamcrest-heavy", "input"),
         outputDir,
+        telemetryDb: false,
       });
     });
 

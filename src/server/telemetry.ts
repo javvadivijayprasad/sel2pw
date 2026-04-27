@@ -114,12 +114,30 @@ function loadSqlite(): BetterSqlite3Module | null {
   }
 }
 
-/** Create a failure store. Returns a no-op store when better-sqlite3 isn't available. */
+/** Create a failure store. Returns a no-op store when better-sqlite3 isn't
+ * available OR when the SQLite open itself fails (SQLITE_BUSY, locked file,
+ * permission denied, full disk, etc.). Telemetry is best-effort by design —
+ * it must never break a conversion run.
+ *
+ * The realworld fixtures suite triggered SQLITE_BUSY on macOS-Node-18 and
+ * Windows-Node-22 cells because parallel test cases all opened the same
+ * default db path with WAL mode. Catch + fall back to no-op fixes that
+ * crash without changing the public contract.
+ */
 export function createFailureStore(dbPath: string): FailureStore {
   const sqlite = loadSqlite();
   if (!sqlite) return makeNoopStore();
-  fs.ensureDirSync(path.dirname(dbPath));
-  return makeSqliteStore(sqlite, dbPath);
+  try {
+    fs.ensureDirSync(path.dirname(dbPath));
+    return makeSqliteStore(sqlite, dbPath);
+  } catch (err) {
+    const code = (err as { code?: string }).code ?? "UNKNOWN";
+    logger.warn(
+      { code, dbPath, err: (err as Error).message },
+      "Failed to open telemetry SQLite store — falling back to no-op. Conversion continues without failure telemetry.",
+    );
+    return makeNoopStore();
+  }
 }
 
 // ---------------- SQLite-backed store ----------------

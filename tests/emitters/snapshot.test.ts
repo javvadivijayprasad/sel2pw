@@ -20,6 +20,11 @@ describe("emitter snapshots — bundled sample", () => {
     await convert({
       inputDir: path.resolve(__dirname, "../../examples/selenium-testng-sample"),
       outputDir,
+      // Disable telemetry SQLite — vitest runs test files in parallel; if
+      // the realworld suite and this suite both open the default
+      // `.sel2pw/telemetry.db` they race for WAL mode and one hits
+      // SQLITE_BUSY on slower CI runners (macos-Node-18, windows-Node-22).
+      telemetryDb: false,
     });
   });
 
