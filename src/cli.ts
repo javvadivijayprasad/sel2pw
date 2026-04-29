@@ -44,6 +44,7 @@ program
   .option("--emit-auth-setup", "Generate tests/auth.setup.ts when a LoginPage is detected.")
   .option("--format", "Run Prettier over generated TS.")
   .option("--validate", "Run `tsc --noEmit` over generated project as a gate.")
+  .option("--validate-eslint", "Run ESLint over generated project (requires eslint config in output).")
   .option("--no-todo-markers", "Skip inserting // TODO(sel2pw): markers in generated code.")
   .option("--pom-style <style>", "Page Object style: 'instance' (default) or 'factory' (page-bag fixture).", "instance")
   .option("--lang <lang>", "Force source language: 'java' or 'csharp'. Auto-detected when omitted.")
@@ -60,6 +61,7 @@ program
     emitAuthSetup?: boolean;
     format?: boolean;
     validate?: boolean;
+    validateEslint?: boolean;
     todoMarkers?: boolean;
     pomStyle?: "instance" | "factory";
     lang?: "java" | "csharp";
@@ -100,6 +102,7 @@ program
         emitAuthSetup: opts.emitAuthSetup,
         formatOutput: opts.format,
         validateOutput: opts.validate,
+        validateEslint: opts.validateEslint,
         emitTodoMarkers: opts.todoMarkers,
         pomStyle: opts.pomStyle,
         forceStack: opts.lang === "csharp" ? "csharp-nunit" : opts.lang === "java" ? "java-testng" : undefined,

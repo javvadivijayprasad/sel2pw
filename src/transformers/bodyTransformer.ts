@@ -2,6 +2,7 @@ import { applyApiRewrites } from "./apiMap";
 import { applyAssertionRewrites } from "./assertionMap";
 import { applyAdvancedApiRewrites } from "./advancedApiMap";
 import { applyHamcrestRewrites } from "./hamcrestMap";
+import { applyJavaIdiomRewrites } from "./javaIdiomMap";
 import { ReviewItem } from "../types";
 
 /**
@@ -54,6 +55,17 @@ export function transformMethodBody(
   const adv = applyAdvancedApiRewrites(body, filePath);
   body = adv.body;
   warnings.push(...adv.warnings);
+
+  // 2c) Java standard-library idioms — `.size()` / `.get(i)` / `.equals()` /
+  // `.length()` / `.contains()` / `Integer.parseInt`, type-position rewrites
+  // (`String[]` / `WebElement` / `List<WebElement>`), Select-dropdown
+  // idiom (`new Select(el).selectByVisibleText(...)`), and custom-helper
+  // call sites (`clickElement`, `verifyEquals`, `elementExists` — common
+  // in TestNG-style Java frameworks). Added in 0.10.8 — see
+  // `docs/CONVERSION_PATTERNS.md` for the full mapping table.
+  const idiom = applyJavaIdiomRewrites(body, filePath);
+  body = idiom.body;
+  warnings.push(...idiom.warnings);
 
   // 3) Assertions: TestNG/JUnit `Assert.*` then Hamcrest `assertThat(...)`.
   body = applyAssertionRewrites(body);

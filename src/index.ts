@@ -18,6 +18,7 @@ import {
 } from "./transformers/customUtilDetector";
 import { prettyPrint } from "./post/prettierFormat";
 import { tscValidate } from "./post/tscValidate";
+import { eslintValidate } from "./post/eslintValidate";
 import { detectAndEmitAuthSetup } from "./post/authSetupGenerator";
 import { insertTodoMarkers } from "./post/todoMarkers";
 import { writeMigrationNotes } from "./reports/migrationNotes";
@@ -68,6 +69,7 @@ export interface ConvertOptions {
   formatOutput?: boolean;
   /** When true, run `tsc --noEmit` over the generated project as a gate. */
   validateOutput?: boolean;
+  validateEslint?: boolean;
   /** When true, insert `// TODO(sel2pw): …` markers near manual review items. */
   emitTodoMarkers?: boolean;
   /**
@@ -445,6 +447,19 @@ export async function convert(opts: ConvertOptions): Promise<{
       if (!tsc.ok) {
         // Re-write the review report with the new tsc warnings appended.
         summary.warnings.push(...tsc.warnings);
+        await writeReviewReport(outputDir, summary);
+      }
+    }
+
+    // ESLint validation pass — sister to tscValidate. Catches style and
+    // best-practice issues (unused vars, missing await on a promise, ===
+    // vs ==, etc.) that compile but indicate bugs in the emitted output.
+    // Best-effort by design: surfaces info notes when eslint isn't
+    // installed / no config in output, doesn't fail the conversion.
+    if (opts.validateEslint) {
+      const lint = await eslintValidate(outputDir);
+      if (lint.warnings.length > 0) {
+        summary.warnings.push(...lint.warnings);
         await writeReviewReport(outputDir, summary);
       }
     }

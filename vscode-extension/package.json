@@ -1,0 +1,128 @@
+{
+  "name": "sel2pw-vscode",
+  "displayName": "sel2pw — Selenium to Playwright Converter",
+  "description": "Convert Selenium Java/TestNG/BDD test suites to Playwright TypeScript directly from VS Code. Right-click any folder containing Selenium tests and convert it in seconds.",
+  "version": "0.1.0",
+  "publisher": "vijaypjavvadi",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Testing"
+  ],
+  "keywords": [
+    "selenium",
+    "playwright",
+    "testng",
+    "migration",
+    "test-automation",
+    "java",
+    "typescript"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/javvadivijayprasad/sel2pw#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/javvadivijayprasad/sel2pw.git",
+    "directory": "vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/javvadivijayprasad/sel2pw/issues"
+  },
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1e293b",
+    "theme": "dark"
+  },
+  "activationEvents": [
+    "onCommand:sel2pw.convertFolder",
+    "onCommand:sel2pw.analyzeFolder",
+    "onCommand:sel2pw.openReview"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "sel2pw.convertFolder",
+        "title": "sel2pw: Convert to Playwright",
+        "category": "sel2pw"
+      },
+      {
+        "command": "sel2pw.analyzeFolder",
+        "title": "sel2pw: Analyze (dry run)",
+        "category": "sel2pw"
+      },
+      {
+        "command": "sel2pw.openReview",
+        "title": "sel2pw: Open Conversion Review",
+        "category": "sel2pw"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "when": "explorerResourceIsFolder",
+          "command": "sel2pw.convertFolder",
+          "group": "7_modification@10"
+        },
+        {
+          "when": "explorerResourceIsFolder",
+          "command": "sel2pw.analyzeFolder",
+          "group": "7_modification@11"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "sel2pw",
+      "properties": {
+        "sel2pw.outputSuffix": {
+          "type": "string",
+          "default": "-playwright",
+          "description": "Suffix appended to the source folder name to derive the output folder. e.g. `my-tests` → `my-tests-playwright`."
+        },
+        "sel2pw.format": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run Prettier over the converted output."
+        },
+        "sel2pw.validate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run `tsc --noEmit` over the converted output and surface errors in the review."
+        },
+        "sel2pw.emitSelfHealingShim": {
+          "type": "boolean",
+          "default": false,
+          "description": "Wrap converted locators in healOrThrow() for runtime self-healing (requires @platform/sdk-self-healing)."
+        },
+        "sel2pw.emitAuthSetup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Generate tests/auth.setup.ts when a LoginPage is detected."
+        },
+        "sel2pw.cliPath": {
+          "type": "string",
+          "default": "",
+          "description": "Override the path to the sel2pw CLI binary. Leave empty to use the bundled npm package (@vijaypjavvadi/sel2pw)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "dependencies": {
+    "@vijaypjavvadi/sel2pw": "^0.10.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.32.0",
+    "typescript": "^5.4.5"
+  }
+}
