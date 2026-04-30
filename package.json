@@ -1,6 +1,6 @@
 {
   "name": "@vijaypjavvadi/sel2pw",
-  "version": "0.10.8",
+  "version": "0.11.0",
   "description": "Convert Java + Selenium + TestNG test suites to Playwright TypeScript (rule-based, AST-driven). Supports Selenium Java, C# NUnit, Cucumber BDD, SpecFlow with optional LLM fallback (Anthropic / OpenAI / Gemini).",
   "bin": {
     "sel2pw": "dist/cli.js"

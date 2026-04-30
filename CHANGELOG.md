@@ -4,6 +4,141 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [0.11.0] — `--bdd-mode flatten` (pure Playwright Test output for BDD source)
+
+**New capability.** sel2pw can now convert Cucumber BDD source (`.feature` files + Java step-def classes) into **pure Playwright Test output** — no `.feature` files, no `playwright-bdd` runtime, no Gherkin layer. Each `Scenario` becomes one `test()` call. Each `Scenario Outline` becomes a `for` loop over external JSON data.
+
+This is the architectural choice for teams that want to fully commit to Playwright's idioms and own their tests in TypeScript.
+
+### Two BDD output modes
+
+```bash
+# Default (back-compat with 0.10.x): keep .feature files + playwright-bdd skeleton
+sel2pw convert ./suite --out ./pw --bdd-mode preserve
+
+# New in 0.11.0: drop .feature files, emit pure Playwright Test specs
+sel2pw convert ./suite --out ./pw --bdd-mode flatten
+```
+
+### Output layout (flatten mode)
+
+```
+output-playwright/
+├── pages/                  <- Page Objects with Locator fields (unchanged)
+├── tests/
+│   ├── login.spec.ts       <- one file per .feature, one test() per Scenario
+│   ├── checkout.spec.ts
+│   └── data/               <- NEW: externalised Scenario Outline data
+│       ├── login-cases.json
+│       └── checkout-cases.json
+├── playwright.config.ts
+└── package.json
+```
+
+### Example transformation
+
+**Input — `login.feature`:**
+
+```gherkin
+Feature: User Login
+
+  Background:
+    Given user is on the login page
+
+  Scenario: Successful login
+    When user enters "alice" and "secret"
+    Then user is redirected to the dashboard
+
+  Scenario Outline: Login with various credentials
+    When user enters "<username>" and "<password>"
+    Then result should be "<expected>"
+
+    Examples:
+      | username | password | expected |
+      | alice    | secret   | success  |
+      | bob      | wrong    | error    |
+```
+
+**Output — `tests/user-login.spec.ts`:**
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.describe("User Login", () => {
+  test.beforeEach(async ({ page }) => {
+    // Given user is on the login page
+    await page.goto('/login');
+  });
+
+  test("Successful login", async ({ page }) => {
+    // When user enters "alice" and "secret"
+    await page.locator('#username').fill('alice');
+    await page.locator('#password').fill('secret');
+    await page.locator('#submit').click();
+    // Then user is redirected to the dashboard
+    await expect(page.locator('h1')).toHaveText('Dashboard');
+  });
+
+  // Scenario Outline data externalised to tests/data/user-login-login-with-various-credentials.json
+  const loginWithVariousCredentialsData = require('./data/user-login-login-with-various-credentials.json') as Array<Record<string, string>>;
+  for (const row of loginWithVariousCredentialsData) {
+    test(`Login with various credentials (${row.username}, ${row.password}, ${row.expected})`, async ({ page }) => {
+      // When user enters "<username>" and "<password>"
+      await page.locator('#username').fill(`${row.username}`);
+      await page.locator('#password').fill(`${row.password}`);
+      // Then result should be "<expected>"
+      await expect(page.locator('h1')).toHaveText(`${row.expected}`);
+    });
+  }
+});
+```
+
+**Output — `tests/data/user-login-login-with-various-credentials.json`:**
+
+```json
+[
+  { "username": "alice", "password": "secret", "expected": "success" },
+  { "username": "bob", "password": "wrong", "expected": "error" }
+]
+```
+
+### Implementation
+
+- **`src/parser/featureParser.ts`** — new (~200 lines). Line-based regex parser for Gherkin. Handles `Feature`, `Background`, `Scenario`, `Scenario Outline` + `Examples`, tags, comments. MVP: English keywords only.
+- **`src/stretch/bddFlatten.ts`** — new (~270 lines). The flatten emitter. Extracts step-def methods from Java sources, compiles their `@Given/@When/@Then` patterns into JS RegExp (handles both raw regex and Cucumber `{string}/{int}/{float}/{word}` expressions), matches each feature step to its step-def, inlines the body, externalises Examples to JSON.
+- **`src/cli.ts`** — new `--bdd-mode <preserve|flatten>` flag. Defaults to `preserve` for back-compat.
+- **`src/index.ts`** — wires the new emitter into the BDD pipeline based on `bddMode` option.
+
+### Known MVP limitations (will widen via 0.11.x patches as users hit them)
+
+- **DocStrings** (`"""` triple-quoted multi-line step args) — not parsed.
+- **DataTables** (step args via `| col | col |` rows after a step) — not parsed.
+- **Gherkin Rules block** (Gherkin 6+) — not parsed.
+- **Internationalisation** — only English keywords (`Feature` / `Scenario` / `Given` / `When` / `Then` / `And` / `But` / `Background` / `Examples`).
+- **Page Object auto-import** — the spec has a comment saying "import any Page Object you reference"; auto-detecting which ones are referenced is a 0.11.1 patch.
+- **Outline parameter substitution in step-def bodies** — substitutes `<param>` placeholders in step text but body-side substitution depends on step-def using the same parameter names; falls back to leaving the body unchanged if names don't align.
+
+### Why this matters
+
+Mode A (preserve, the existing default) is right for teams that want their non-developer stakeholders to still read Gherkin. Mode B (flatten) is right for teams that have decided Playwright Test is the source of truth and Gherkin was a Selenium-era artefact. Most companies migrating off Selenium fall into category B once they realise the Gherkin layer was always more "ceremony" than "value" for their actual workflow.
+
+This unblocks teams that have already decided to commit to TypeScript / Playwright Test and don't want a `.feature` file in their new repo.
+
+### Files changed
+- `src/parser/featureParser.ts` — **new**
+- `src/stretch/bddFlatten.ts` — **new**
+- `src/cli.ts` — `--bdd-mode` flag
+- `src/index.ts` — route to `convertBddFlatten` when `bddMode === 'flatten'`
+- `package.json` — bump to 0.11.0
+- `CHANGELOG.md` — this entry
+
+### Validation expectation
+
+- selenium9 / 10 / 11 / 14 are BDD codebases — re-run them with `--bdd-mode flatten` to confirm the output is sane and the original `--bdd-mode preserve` still works (back-compat).
+- Run against your real production BDD suite (the 16th codebase) once available.
+
+---
+
 ## [0.10.8] — Java idiom expansion + ESLint validator + migration playbook + VS Code extension + 240-pattern reference
 
 The biggest single release since the original 0.10 distribution work. Bundles the post-publish CI hardening (was 0.10.6), the developer-experience polish (would have been 0.10.7), and the conversion-coverage expansion (this release's headline).

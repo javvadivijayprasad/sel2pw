@@ -31,6 +31,7 @@ import {
   extractCsharpTestClass,
 } from "./parser/csharpExtractor";
 import { convertBdd } from "./stretch/bdd";
+import { convertBddFlatten } from "./stretch/bddFlatten";
 import { runLlmFallback } from "./post/llmFallback";
 import { LlmProvider } from "./stretch/llmAdapter";
 import {
@@ -70,6 +71,16 @@ export interface ConvertOptions {
   /** When true, run `tsc --noEmit` over the generated project as a gate. */
   validateOutput?: boolean;
   validateEslint?: boolean;
+  /**
+   * BDD output mode — only relevant when source stack is java-bdd-cucumber
+   * or csharp-bdd-specflow. Default: "preserve".
+   *   - "preserve": keep .feature files; emit playwright-bdd step-def TS files.
+   *     Tests still look like Cucumber, run via playwright-bdd.
+   *   - "flatten":  drop .feature files; emit one Playwright test() per
+   *     Scenario; externalise Scenario Outline Examples to JSON; inline
+   *     step-def bodies into the test bodies. Pure Playwright Test output.
+   */
+  bddMode?: "preserve" | "flatten";
   /** When true, insert `// TODO(sel2pw): …` markers near manual review items. */
   emitTodoMarkers?: boolean;
   /**
@@ -347,7 +358,13 @@ export async function convert(opts: ConvertOptions): Promise<{
   // -------- Phase 8: BDD path (Cucumber/Java OR SpecFlow/C#) --------
   if (stack === "java-bdd-cucumber" || stack === "csharp-bdd-specflow") {
     try {
-      const bddOut = await convertBdd(inputDir, javaFiles);
+      // Phase 11 (v0.11.0): two BDD output modes. Default `preserve` keeps
+      // the original behaviour (playwright-bdd skeleton + .feature files).
+      // `flatten` produces pure Playwright Test specs with each Scenario
+      // as a test() call and Scenario Outline Examples externalised as JSON.
+      const bddOut = opts.bddMode === "flatten"
+        ? await convertBddFlatten(inputDir, javaFiles)
+        : await convertBdd(inputDir, javaFiles);
       converted.push(...bddOut.files);
       warnings.push(...bddOut.warnings);
     } catch (err: any) {
