@@ -16,6 +16,7 @@ import {
   detectCustomUtilities,
   emitUtilityStub,
 } from "./transformers/customUtilDetector";
+import { hasSeleniumApi, emitConvertibleHelper } from "./emitters/helperClassEmitter";
 import { prettyPrint } from "./post/prettierFormat";
 import { tscValidate } from "./post/tscValidate";
 import { eslintValidate } from "./post/eslintValidate";
@@ -204,9 +205,25 @@ export async function convert(opts: ConvertOptions): Promise<{
         // Phase 6: try the custom-utility detector before giving up.
         const util = detectCustomUtilities(file);
         if (util) {
-          const stub = emitUtilityStub(util);
-          converted.push(stub.converted);
-          warnings.push(stub.warning);
+          // 0.11.1: split — utilities that contain Selenium API calls
+          // (`driver.findElement`, `By.*`, `WebElement`, `WebDriverWait`,
+          // `Actions`, etc.) get CONVERTED through bodyTransformer instead
+          // of stubbed. Pure-data utilities (Excel/JSON/DB readers) still
+          // get the stub-with-recipe treatment.
+          if (hasSeleniumApi(file.source)) {
+            const helper = emitConvertibleHelper(file);
+            converted.push(helper.converted);
+            warnings.push(...helper.warnings);
+            warnings.push({
+              file: file.path,
+              severity: "info",
+              message: `Detected Selenium API in \`${file.className}\` (${util.kind}) — converted to TS helper class at \`${helper.converted.relPath}\` instead of stubbing. Verify method bodies; complex constructs may still need manual review.`,
+            });
+          } else {
+            const stub = emitUtilityStub(util);
+            converted.push(stub.converted);
+            warnings.push(stub.warning);
+          }
         } else {
           warnings.push({
             file: file.path,

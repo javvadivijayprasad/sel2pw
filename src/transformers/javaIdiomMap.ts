@@ -41,6 +41,71 @@ export function applyJavaIdiomRewrites(
   let body = raw;
 
   // ============================================================
+  // 0) Project-specific reporter wrappers (v0.11.1 Patch F)
+  // ============================================================
+  // Real-world Java frameworks wrap test reporting in a custom helper
+  // class — `objHTMLFunctions.ReportPassFail(...)`, `Reporter.log(...)`,
+  // `extentTest.log(...)`, `LogStatus.PASS`, etc. These calls have no
+  // direct Playwright equivalent; they're project-specific reporting
+  // layers. Convert each to a `// TODO(sel2pw)` comment so the call
+  // site doesn't break the conversion but the user knows to wire to
+  // Playwright's built-in reporter (or `allure-playwright`).
+
+  // objHTMLFunctions.ReportPassFail(returnDriver(), ...) → comment
+  body = body.replace(
+    /\bobj\w*Functions?\.\w*(?:Report|Log|Status)\w*\s*\([^)]*(?:\([^)]*\)[^)]*)*\)\s*;/g,
+    "// TODO(sel2pw): project-specific reporter call — wire to Playwright reporter (playwright.config.ts → reporter or allure-playwright)",
+  );
+  // Reporter.log(...) / Reporter.report(...) (TestNG Reporter API)
+  body = body.replace(
+    /\bReporter\.(log|report)\s*\([^)]*\)\s*;/g,
+    "// TODO(sel2pw): TestNG Reporter call — replace with Playwright test.info().attach() or use allure-playwright steps",
+  );
+  // extentTest.log(LogStatus.PASS, "...") / extentTest.pass("...") etc.
+  body = body.replace(
+    /\b(?:extentTest|test)\.(log|pass|fail|info|warn|error|skip)\s*\([^)]*\)\s*;/g,
+    "// TODO(sel2pw): ExtentReports call — replace with Playwright reporter or allure-playwright",
+  );
+
+  // returnDriver() / getDriver() / driverInstance() — accessors for the
+  // current WebDriver. In Playwright the `page` fixture is the equivalent.
+  body = body.replace(
+    /\b(?:returnDriver|getDriver|getWebDriver|driverInstance|currentDriver)\s*\(\s*\)/g,
+    "this.page",
+  );
+
+  // SLF4J / Logback / Log4j placeholder-style logging:
+  //   logger.info("PASS {} | Expected: {}", desc, value)
+  // → logger.info(`PASS ${desc} | Expected: ${value}`)
+  // We rewrite for the common 1-arg and 2-arg shapes; complex multi-arg
+  // calls fall through and the user can fix them.
+  body = body.replace(
+    /\b(logger|log)\.(info|warn|error|debug|trace)\s*\(\s*"([^"]*)"\s*,\s*([^,)]+)\s*\)\s*;/g,
+    (_m, log: string, level: string, fmt: string, arg: string) => {
+      const tplFmt = fmt.replace(/\{\s*\}/, `\${${arg.trim()}}`);
+      return `${log}.${level}(\`${tplFmt}\`);`;
+    },
+  );
+  body = body.replace(
+    /\b(logger|log)\.(info|warn|error|debug|trace)\s*\(\s*"([^"]*)"\s*,\s*([^,)]+)\s*,\s*([^,)]+)\s*\)\s*;/g,
+    (_m, log: string, level: string, fmt: string, a1: string, a2: string) => {
+      let i = 0;
+      const args = [a1.trim(), a2.trim()];
+      const tplFmt = fmt.replace(/\{\s*\}/g, () => `\${${args[i++] ?? "unknown"}}`);
+      return `${log}.${level}(\`${tplFmt}\`);`;
+    },
+  );
+  body = body.replace(
+    /\b(logger|log)\.(info|warn|error|debug|trace)\s*\(\s*"([^"]*)"\s*,\s*([^,)]+)\s*,\s*([^,)]+)\s*,\s*([^,)]+)\s*\)\s*;/g,
+    (_m, log: string, level: string, fmt: string, a1: string, a2: string, a3: string) => {
+      let i = 0;
+      const args = [a1.trim(), a2.trim(), a3.trim()];
+      const tplFmt = fmt.replace(/\{\s*\}/g, () => `\${${args[i++] ?? "unknown"}}`);
+      return `${log}.${level}(\`${tplFmt}\`);`;
+    },
+  );
+
+  // ============================================================
   // 1) Custom helper call sites (project-specific but very common)
   // ============================================================
   // These are conventions in TestNG-style frameworks. The helper class

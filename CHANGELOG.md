@@ -4,6 +4,122 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [0.11.1] — Real-user feedback patches: PageObjects naming + Selenium-aware utility conversion
+
+**First patch driven by a real production codebase.** Three observations from running 0.11.0 against a real internal Selenium suite, all patched.
+
+### Patch A — `*PageObjects` / `*PageObject` / `*Screen` / `*View` naming convention
+
+The 0.11.0 classifier matched `*Page` / `*Section` / `*Component` / `*Locators` / `*Elements` as page-object names. Real-world codebases also use:
+
+- `*PageObjects` / `*PageObject` — explicit POM convention, common when files live in a `pageobjects/` directory
+- `*Screen` — mobile-testing convention that bled into web suites
+- `*View` — alt convention from MV* naming
+
+**Fix:** widened the classifier regex in `src/scanner/projectScanner.ts`. Updated `pageObjectFileName()` in `src/utils/naming.ts` so `LoginPageObjects` becomes `login.page.ts` (not `login-page-objects.page.ts`). Mirror change in `pageObjectImportPath()` in the test-class emitter so spec files import the right paths. Mirror change in `conversionResult.ts` so the lookup correlates correctly.
+
+### Patch B — Utility classes with Selenium API calls now CONVERT, not stub
+
+`customUtilDetector` previously stubbed every utility class with a "migrate manually" header. But many real-world utility classes — `ElementHelper`, `WebActions`, `WaitUtils`, `BrowserActions`, etc. — contain Selenium API calls in their bodies (`el.click()`, `driver.findElement(...)`, `WebDriverWait`, `Actions` chains). Stubbing them left the converted spec files riddled with `await Helpers.notImplemented(...)` call sites.
+
+**Fix:** new emitter `src/emitters/helperClassEmitter.ts` (~200 lines). When `customUtilDetector` would stub a class, sel2pw now first checks whether the class body contains Selenium API references via `hasSeleniumApi(source)`. If yes:
+
+- Converts to a TS helper class at `tests/helpers/<name>.ts` (NOT `tests/_legacy-stubs/`).
+- Each public method's body runs through the full `bodyTransformer` pipeline (`apiMap` + `advancedApiMap` + `javaIdiomMap` + assertions + Hamcrest).
+- Method signatures auto-rewrite Selenium types: `WebDriver` → `Page`, `WebElement` → `Locator`, `By` → `string`, `List<WebElement>` → `Locator`.
+- Methods declared `async` (every Playwright op is async).
+- Return types wrapped in `Promise<...>`.
+
+Pure-data utilities with no Selenium calls (Excel readers, JSON parsers, DB connectors, retry analysers) still get the stub-with-recipe treatment — that's correct because those need real npm-package replacements.
+
+### Patch C — `WebDriver` / `By` references in converted output (was downstream of A + B)
+
+User observed `WebDriver` and `By` references leaking into `pages/*.ts` and `tests/*.spec.ts`. Root cause: page objects with `*PageObjects` suffix were getting classified as `unknown` (Patch A), then stubbed by the util detector (Patch B), so their original Java text passed through with raw Selenium calls inside.
+
+After Patch A + B, this disappears. Page Objects classify correctly → go through `pageObjectEmitter` → bodies run through `bodyTransformer` → Selenium calls rewrite to Playwright primitives.
+
+### Patch D — `Thread.sleep` flagged for review with explicit TODO marker
+
+`Thread.sleep(2000)` was previously converted to `await page.waitForTimeout(2000)` silently. In Playwright that's almost always dead code — auto-waits handle the underlying timing issue, the sleep just slows the test down by N milliseconds.
+
+**Fix:** every `waitForTimeout` emission now carries an inline TODO marker:
+
+```typescript
+// TODO(sel2pw): Playwright auto-waits on the next action — this waitForTimeout
+// is often unnecessary. Verify behavior; remove if redundant.
+await this.page.waitForTimeout(2000);
+```
+
+`MIGRATION_NOTES.md` also gets an expanded "What changed in your test runtime" section spelling out the wait-handling philosophy: which waits stay (URL changes, network responses, custom predicates), which were removed (`WebDriverWait`, `ExpectedConditions`, `implicitlyWait`), which were kept-but-flagged (`Thread.sleep`).
+
+After running tests post-conversion, do a sweep:
+```bash
+grep -rn "waitForTimeout" tests/ pages/  # Each is a candidate for removal
+```
+
+### Patch E — Dual `WebElement` + `By <name>_Locator` field deduplication
+
+Real-world page objects often declare both:
+
+```java
+@FindBy(xpath = "...") public WebElement CreateReferral_Link;
+public By CreateReferral_Link_Locator = By.xpath("...");
+```
+
+Both reference the same xpath. sel2pw was emitting both as separate fields, causing duplicate locators in the converted Page Object. **Fix:** in `extractLocatorFields`, after collecting both `@FindBy` fields and bare `By` fields, drop any `By <name>_Locator` whose `<name>` already exists as a `@FindBy WebElement`. Only one `Locator` field survives per locator.
+
+### Patch F — Project-specific reporter wrappers handled
+
+Real-world Java frameworks wrap test reporting in custom helper classes — `objHTMLFunctions.ReportPassFail(...)`, `Reporter.log(...)`, `extentTest.log(LogStatus.PASS, ...)`, etc. These have no direct Playwright equivalent. **Fix:** in `javaIdiomMap.ts`, four new transforms convert each pattern to a `// TODO(sel2pw)` comment that points to Playwright's built-in reporter or `allure-playwright`.
+
+Plus three related patterns:
+- `returnDriver()` / `getDriver()` / `driverInstance()` accessors → `this.page`
+- SLF4J / Log4j placeholder logging: `logger.info("PASS {} expected {}", desc, val)` → `logger.info(\`PASS ${desc} expected ${val}\`)` (1-arg / 2-arg / 3-arg variants)
+
+### Patch G — `sendKeys(WebElement, Keys)` overload-aware conversion
+
+Method signatures with a `Keys` enum parameter (e.g. `sendKeys(WebElement el, Keys k)`) need different body conversion from string-typed sendKeys. **Fix:** in `helperClassEmitter`, when extracting methods, detect parameters typed `Keys` and pre-rewrite the body BEFORE `bodyTransformer` runs:
+- `<el>.sendKeys(<keysParam>)` → `<el>.press(<keysParam>)` (instead of the default `.fill()` mapping)
+- `<keysParam>.name()` → `<keysParam>` (the param is now a plain string)
+- Param type `Keys` → `string` in the TS signature
+
+### Patch H — `PascalCase_Snake_Case` field names normalised to camelCase
+
+Java codebases mix conventions: `CreateReferral_Link`, `submit_btn`, `userInput_TextBox`. Without normalisation, the TS output emits `createReferral_Link: Locator` — valid but ugly.
+
+**Fix:** `toCamelCase()` in `src/utils/naming.ts` now converts `_<char>` → camelCase boundary:
+- `CreateReferral_Link` → `createReferralLink`
+- `CreateReferral_subsidiary_SelectBox` → `createReferralSubsidiarySelectBox`
+- `submit_btn` → `submitBtn`
+- `userInput` → `userInput` (already camelCase, untouched)
+
+Applied in `extractLocatorFields` so the IR carries clean names, which flow through the page-object emitter and conversion-result lookup.
+
+### Files changed
+- `src/scanner/projectScanner.ts` — classifier regex widened (Patch A)
+- `src/utils/naming.ts` — `pageObjectFileName()` strips new suffixes (A); `toCamelCase()` handles snake_Case (H)
+- `src/emitters/testClassEmitter.ts` — `pageObjectImportPath()` strips new suffixes (A)
+- `src/reports/conversionResult.ts` — lookup regex strips new suffixes (A)
+- `src/emitters/helperClassEmitter.ts` — **new** (B); now also `Keys`-aware (G)
+- `src/parser/javaExtractor.ts` — dedupe `*_Locator` siblings + camelCase field names (E + H)
+- `src/transformers/javaIdiomMap.ts` — project-specific reporter wrappers + SLF4J placeholders (F)
+- `src/index.ts` — wire `hasSeleniumApi(file.source)` check before `emitUtilityStub` (B)
+- `src/transformers/apiMap.ts` — Thread.sleep emits TODO marker (D)
+- `src/reports/migrationNotes.ts` — expanded auto-wait guidance (D)
+- `package.json` — bump to 0.11.1
+- `CHANGELOG.md` — this entry
+
+### Real-user validation expectation
+
+User running 0.11.1 against the same production codebase that surfaced these issues should see:
+- `*PageObjects` files now in `pages/<name>.page.ts` (not stubbed)
+- `*Helper` / `*Util` classes with Selenium calls now in `tests/helpers/<name>.ts` (real TS code, not stubs)
+- `WebDriver` and `By` references gone from `pages/*.ts` and `tests/*.spec.ts`
+
+If any of those still show up after 0.11.1, the patch loop continues — that's exactly how 0.11.2 will form.
+
+---
+
 ## [0.11.0] — `--bdd-mode flatten` (pure Playwright Test output for BDD source)
 
 **New capability.** sel2pw can now convert Cucumber BDD source (`.feature` files + Java step-def classes) into **pure Playwright Test output** — no `.feature` files, no `playwright-bdd` runtime, no Gherkin layer. Each `Scenario` becomes one `test()` call. Each `Scenario Outline` becomes a `for` loop over external JSON data.

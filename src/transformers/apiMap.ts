@@ -166,9 +166,16 @@ export const API_REWRITES: ApiRewrite[] = [
     note: "Field-style wait.until() removed (Playwright auto-waits). For specific assertions, add expect(locator).toBeVisible() etc.",
   },
   {
+    // Thread.sleep is almost always a Selenium-era hack — "I don't know why
+    // this is flaky, waiting N ms fixes it." Playwright's auto-waits usually
+    // eliminate the underlying timing issue, so the converted waitForTimeout
+    // is often dead code that just slows down the test. We convert literally
+    // (preserves behavior) but attach a TODO marker so the user remembers
+    // to verify whether each one is actually needed. v0.11.1.
     pattern: /Thread\.sleep\s*\(\s*(\d+)\s*\)\s*;/g,
-    replacement: "await this.page.waitForTimeout($1);",
-    note: "Thread.sleep() → page.waitForTimeout(); prefer waiting on a real condition",
+    replacement:
+      "// TODO(sel2pw): Playwright auto-waits on the next action — this waitForTimeout is often unnecessary. Verify behavior; remove if redundant.\n    await this.page.waitForTimeout($1);",
+    note: "Thread.sleep() → page.waitForTimeout(). Each one is flagged with a TODO — Playwright's auto-wait usually makes these redundant; verify and remove where possible.",
   },
 
   // ----- Java keywords / minor cleanups -----

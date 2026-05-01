@@ -54,7 +54,16 @@ export async function writeMigrationNotes(
   lines.push(`## What changed in your test runtime`);
   lines.push("");
   lines.push(
-    `- **Auto-waits.** Playwright auto-waits on locators before acting; explicit \`WebDriverWait\` was removed throughout.`,
+    `- **Auto-waits.** Playwright auto-waits on locators before acting; explicit \`WebDriverWait\` and \`ExpectedConditions\` were removed throughout. Every \`locator.click()\` / \`.fill()\` / \`.innerText()\` waits up to \`actionTimeout\` (default 30s) for the element to become attached, visible, stable, and able to receive events. You almost never need to write a wait yourself for an element-action.`,
+  );
+  lines.push(
+    `- **\`Thread.sleep\` was kept (mapped to \`page.waitForTimeout\`) but flagged with TODO markers.** Each one is a Selenium-era hack that often becomes redundant under Playwright's auto-waits. Search the converted output for \`TODO(sel2pw)\` near \`waitForTimeout\` calls and verify whether each one is still needed — most can be removed without changing behavior, and tests run faster afterward.`,
+  );
+  lines.push(
+    `- **Real conditional waits** (URL changes, network responses, custom predicates) — use \`await page.waitForURL(...)\`, \`await page.waitForResponse(...)\`, or \`await page.waitForFunction(() => ...)\` rather than \`Thread.sleep\`.`,
+  );
+  lines.push(
+    `- **Implicit waits** (\`driver.manage().timeouts().implicitlyWait(...)\`) were removed — set \`use.actionTimeout\` and \`use.navigationTimeout\` in \`playwright.config.ts\` instead.`,
   );
   lines.push(
     `- **Async everywhere.** Every action is \`await\`ed. Page Object methods return \`Promise<T>\`.`,

@@ -164,9 +164,12 @@ function rewriteAwaitOnPageObjectCalls(
 }
 
 function pageObjectImportPath(className: string): string {
-  // LoginPage -> login.page; LoginPages -> login.page (no .ts in TS imports)
+  // LoginPage / LoginPages              -> login.page
+  // LoginPageObject / LoginPageObjects  -> login.page  (added 0.11.1)
+  // LoginScreen / LoginView             -> login.page  (mobile/alt convention)
+  // (must mirror pageObjectFileName in src/utils/naming.ts)
   return className
-    .replace(/Pages?$/, "")
+    .replace(/(?:PageObjects?|Pages?|Screens?|Views?)$/, "")
     .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
     .toLowerCase()
     .concat(".page");

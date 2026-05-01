@@ -39,14 +39,15 @@ export function extractPageObject(file: JavaFile): PageObjectIR {
 }
 
 function extractLocatorFields(source: string): LocatorField[] {
-  const fields: LocatorField[] = [];
+  const findByFields: LocatorField[] = [];
+  const byFields: LocatorField[] = [];
 
   // Pattern 1:  private By usernameInput = By.id("user");
   const byPattern =
     /(?:private|protected|public)?\s*(?:static\s+)?(?:final\s+)?By\s+(\w+)\s*=\s*By\.(id|cssSelector|xpath|name|linkText|partialLinkText|tagName|className)\s*\(\s*"([^"]*)"\s*\)\s*;/g;
   let m: RegExpExecArray | null;
   while ((m = byPattern.exec(source)) !== null) {
-    fields.push({
+    byFields.push({
       name: m[1],
       by: normalizeBy(m[2]),
       value: m[3],
@@ -58,7 +59,7 @@ function extractLocatorFields(source: string): LocatorField[] {
   const findByPattern =
     /@FindBy\s*\(\s*(id|css|xpath|name|linkText|partialLinkText|tagName|className)\s*=\s*"([^"]*)"\s*\)\s*(?:private|protected|public)?\s*(?:static\s+)?(?:final\s+)?WebElement\s+(\w+)\s*;/g;
   while ((m = findByPattern.exec(source)) !== null) {
-    fields.push({
+    findByFields.push({
       name: m[3],
       by: normalizeBy(m[1]),
       value: m[2],
@@ -66,7 +67,27 @@ function extractLocatorFields(source: string): LocatorField[] {
     });
   }
 
-  return fields;
+  // v0.11.1 Patch E: dedupe `<name>_Locator` By fields whose `<name>` already
+  // exists as a @FindBy WebElement. Real-world codebases declare both
+  // patterns in parallel — `@FindBy WebElement Foo` for direct interaction
+  // PLUS `By Foo_Locator` for helper methods that take a `By`. Both refer
+  // to the same xpath; only one Locator field should survive in the
+  // converted output.
+  const findByNames = new Set(findByFields.map((f) => f.name));
+  const dedupedByFields = byFields.filter((b) => {
+    const stripped = b.name.replace(/_Locator$/, "");
+    return !findByNames.has(stripped);
+  });
+
+  // v0.11.1 Patch H: normalise field names from PascalCase_Snake_Case (or
+  // any underscore variant) to idiomatic camelCase. `CreateReferral_Link`
+  // → `createReferralLink`. Original Java name stays in `rawLine` so the
+  // review report can reference it if a body translation needs help.
+  const all = [...findByFields, ...dedupedByFields];
+  return all.map((f) => ({
+    ...f,
+    name: f.name.charAt(0).toLowerCase() + f.name.slice(1).replace(/_+([A-Za-z])/g, (_, c: string) => c.toUpperCase()),
+  }));
 }
 
 function normalizeBy(raw: string): ByStrategy {

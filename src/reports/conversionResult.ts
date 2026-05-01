@@ -156,7 +156,10 @@ function fileOutcomeFor(
   // a trailing dash on names like `API_Test` (see selenium12 + 15).
   const stem = file.kind === "base"
     ? "fixtures"
-    : kebab(file.className).replace(/-(tests?(?:-?case)?|pages?)$/, "");
+    : kebab(file.className).replace(
+        /-(tests?(?:-?case)?|page-?objects?|pages?|screens?|views?)$/,
+        "",
+      );
   const matched = convertedByStem.get(stem);
 
   if (file.kind === "unknown") {

@@ -160,12 +160,16 @@ function classify(className: string, source: string): SourceKind {
   // Page-object name patterns. `*Page` is the textbook convention; `*Section`
   // / `*Elements` / `*Component` / `*Locators` show up in larger frameworks
   // that split a page into reusable sub-areas (header section, side menu,
-  // etc.). Anything with @FindBy, By.* or a WebDriver field is also POM-shaped.
+  // etc.). `*PageObject(s)` is a common explicit convention in Selenium
+  // codebases that namespace their POs under a `pageobjects/` folder
+  // (added in 0.11.1 from real-user feedback). `*Screen` / `*View` show up
+  // in projects that came from mobile testing conventions. Anything with
+  // @FindBy, By.* or a WebDriver field is also POM-shaped.
   if (
     hasFindBy ||
     hasByStatic ||
     hasWebDriverField ||
-    /(?:Page|Section|Component|Locators|Elements)$/.test(className)
+    /(?:Page|PageObject|PageObjects|Section|Component|Locators|Elements|Screen|View)$/.test(className)
   ) {
     return "page-object";
   }
