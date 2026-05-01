@@ -140,13 +140,25 @@ export function emitConvertibleHelper(file: JavaFile): {
 
 function extractPublicMethods(source: string): HelperMethod[] {
   const out: HelperMethod[] = [];
-  // Public method signature: visibility static? returnType name(params) [throws ...] {
+  // Public method signature: visibility (modifiers* in any order) returnType
+  // name(params) [throws ...] {
+  // v0.11.3 Patch R: previous regex assumed `static` came IMMEDIATELY after
+  // visibility, then optionally `final`. Real-world Java has `public final
+  // static WebElement foo()` and `public synchronized static`. Switch to a
+  // greedy match for any/all modifiers in any order so they're all consumed
+  // BEFORE the return type capture group.
   const re =
-    /(public|protected)\s+(static\s+)?(?:final\s+)?([\w<>[\],\s?]+?)\s+(\w+)\s*\(([^)]*)\)\s*(?:throws\s+[\w.,\s]+)?\s*\{/g;
+    /(public|protected)\s+((?:(?:static|final|synchronized|abstract|native|strictfp)\s+)*)([\w<>[\],\s?]+?)\s+(\w+)\s*\(([^)]*)\)\s*(?:throws\s+[\w.,\s]+)?\s*\{/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(source)) !== null) {
-    const isStatic = !!m[2];
-    const returnType = m[3].trim();
+    const modifiers = m[2] || "";
+    const isStatic = /\bstatic\b/.test(modifiers);
+    let returnType = m[3].trim();
+    // Patch S — defensive strip of any leftover modifier word that snuck
+    // into the return type capture (e.g. when modifiers are interleaved).
+    returnType = returnType
+      .replace(/^(?:static|final|synchronized|abstract|native|strictfp)\s+/g, "")
+      .trim();
     const name = m[4];
     const paramSig = m[5].trim();
     // Skip constructors (returnType is class name, name === class name).
@@ -213,12 +225,20 @@ function escapeRegex(s: string): string {
 }
 
 function rewriteSeleniumReturnType(returnType: string): string {
-  if (!returnType || returnType === "void") return "Promise<void>";
-  if (returnType === "WebDriver") return "Promise<Page>";
-  if (returnType === "WebElement") return "Promise<Locator>";
-  if (/^List<\s*WebElement\s*>$/.test(returnType)) return "Promise<Locator>";
+  // Patch S — defensive strip in case a Java modifier (`static`, `final`,
+  // etc.) leaked through the extract regex. Without this, the output
+  // becomes `Promise<static void>` / `Promise<static WebElement>`.
+  const t = returnType
+    .replace(/^(?:static|final|synchronized|abstract|native|strictfp)\s+/g, "")
+    .trim();
+  if (!t || t === "void") return "Promise<void>";
+  if (t === "WebDriver") return "Promise<Page>";
+  if (t === "WebElement") return "Promise<Locator>";
+  if (t === "By") return "Promise<string>";
+  if (/^List<\s*WebElement\s*>$/.test(t)) return "Promise<Locator>";
+  if (/^List<\s*By\s*>$/.test(t)) return "Promise<string[]>";
   // For everything else, wrap in Promise<> since we forced async above.
-  return `Promise<${javaTypeToTs(returnType)}>`;
+  return `Promise<${javaTypeToTs(t)}>`;
 }
 
 function readBraced(source: string, start: number): string | null {

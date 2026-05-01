@@ -17,7 +17,10 @@ export interface ApiRewrite {
 export const API_REWRITES: ApiRewrite[] = [
   // ----- Driver navigation -----
   {
-    pattern: /\bdriver\.get\s*\(\s*([^)]+)\)\s*;/g,
+    // v0.11.3 Patch BB: nested-paren-tolerant arg matcher so calls like
+    // `driver.get(prop.getProperty("url"))` match. Previously stopped at
+    // first `)`.
+    pattern: /\bdriver\.get\s*\(\s*((?:[^)(]|\([^)(]*\))+)\)\s*;/g,
     replacement: "await this.page.goto($1);",
   },
   {
@@ -104,8 +107,11 @@ export const API_REWRITES: ApiRewrite[] = [
     replacement: "await $1.click();",
   },
   // .sendKeys("...") -> .fill(...)
+  // v0.11.3 Patch K: argument matcher allows one level of nested parens
+  // so calls like `sendKeys(Map.get("k"))` or `sendKeys(getValue())` match.
+  // Previously the inner `)` ended the [^)]+ match and the rule didn't fire.
   {
-    pattern: /\b(this\.\w+|\w+)\.sendKeys\s*\(\s*([^)]+)\s*\)\s*;/g,
+    pattern: /\b(this\.\w+|\w+)\.sendKeys\s*\(\s*((?:[^)(]|\([^)(]*\))+)\s*\)\s*;/g,
     replacement: "await $1.fill($2);",
   },
   // .clear()

@@ -4,6 +4,220 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [0.11.3] — Real-user feedback batch: BaseTest cleanup, nested-paren regex, static-prefix helpers, Driver static accessor, Java collection literals, enhanced-for, inherited methods, modifier ordering, standalone By.* args
+
+Eleven patches (J through T) from real production codebase observations + a 15-codebase output audit.
+
+### Patch J — BaseTest fixture body cleanup
+
+`stripDriverBoilerplate` in `baseTestExtractor.ts` extended to remove:
+
+- `WebDriverWait wait = new WebDriverWait(driver, 15)` and bare `wait = new WebDriverWait(...)` — Playwright auto-waits make these dead code
+- `FluentWait` setup
+- `ChromeOptions` / `FirefoxOptions` / `EdgeOptions` / `SafariOptions` instantiation
+- `DesiredCapabilities` declarations
+- `options.addArguments(...)` / `setCapability(...)` / `setExperimentalOption(...)` / `merge(capabilities)`
+- `WebDriverManager.chromedriver().setup()` (bonigarcia bootstrap)
+- `System.setProperty("webdriver.X.driver", ...)`
+- `driver.manage().window().setSize(...)` / `setPosition(...)`
+- `driver.manage().deleteAllCookies()`
+- `driver.manage().timeouts()` chains (implicit waits)
+- `driver.manage().logs()` chains
+- `if (driver != null)` / `if (driver == null)` null-guards
+
+Plus a final pass: bare `driver` identifier → `page` (for cases like `someHelper(driver)` where the variable isn't decorated with `.`).
+
+### Patch K — `sendKeys` regex handles nested parens
+
+`apiMap.ts` rule for `sendKeys` used `[^)]+` for the argument matcher, which broke on calls like `sendKeys(Map.get("k"))` — the inner `)` ended the match and the rule didn't fire. Pass-ordering between apiMap and javaIdiomMap (which rewrites `Map.get` → bracket access) was the surface, but the underlying problem was the regex.
+
+**Fix:** argument matcher now uses `(?:[^)(]|\([^)(]*\))+` which allows one level of nested parens. `sendKeys(ConfigurationReader.get("email"))` → `await this.emailBox.fill(ConfigurationReader.get("email"))` correctly.
+
+### Patch L — Static-prefix helpers + `clearAndSendKeys` family
+
+`javaIdiomMap.ts` helper rewrites (`clickElement`, `enterText`, etc.) used `\bclickElement\(...)` patterns that matched bare calls but left the static-class prefix in place when called as `BrowserUtils.clickElement(...)`. Result: `BrowserUtils.await el.click()` — broken.
+
+**Fix:** every helper rule now starts with `(?:\w+\.)?` to absorb the optional static prefix. Plus added new helpers commonly seen in real codebases:
+
+- `clearAndSendKeys` / `clearAndType` / `clearAndFill` / `clearAndSetText` / `setText` (fill family)
+- `selectFromDropdown` / `selectByText` / `selectOption` (selectOption family)
+- `hoverOver` / `mouseHover` / `hoverOnElement` (hover family)
+- `scrollTo` / `scrollToElement` / `scrollIntoView` (scrollIntoView family)
+- `jsClick` / `doubleClickElement` (click family)
+
+### Patch M — `Driver.get()` / `DriverManager.getDriver()` static accessors
+
+The 0.10.8 javaIdiomMap added `getDriver()` / `returnDriver()` instance-method accessors. Real codebases also use static class accessors like `Driver.get()`, `DriverManager.getDriver()`, `DriverPool.getInstance()`, `BrowserDriver.driver()`.
+
+**Fix:** new rule covers `(?:Driver|DriverManager|DriverFactory|BrowserDriver|WebDriverManager|DriverPool)\.(get|getDriver|getInstance|currentDriver|driver)()` → `this.page`.
+
+### Patch N — Java collection literals
+
+`new ArrayList<>()` was passing through unchanged → invalid TS. Same for `new HashMap<>()`, `new HashSet<>()`, etc.
+
+**Fix:** new rules in `javaIdiomMap.ts`:
+
+- `new ArrayList<>()` / `new ArrayList<String>()` / `new LinkedList<>()` / `new Vector<>()` / `new Stack<>()` / `new CopyOnWriteArrayList<>()` → `[]`
+- `new HashMap<>()` / `new LinkedHashMap<>()` / `new TreeMap<>()` / `new ConcurrentHashMap<>()` / `new Hashtable<>()` → `{}`
+- `new HashSet<>()` / `new LinkedHashSet<>()` / `new TreeSet<>()` / `new CopyOnWriteArraySet<>()` → `new Set()`
+
+Both diamond operator and explicit type args handled.
+
+### Patch O — Java enhanced-for loops
+
+`for (WebElement el : elems) { ... }` was passing through verbatim → invalid TS.
+
+**Fix:**
+
+- `for (WebElement el : elems)` → `for (const el of await elems.all())` (Locator → array of Locators via Playwright's `.all()`)
+- `for (Type var : iterable)` (any non-WebElement type) → `for (const var of iterable)`
+
+### Patch P — Inherited / parent-class method calls in Page Objects
+
+`navigateToLoginPage()` (defined in a parent BaseClass, not in `ir.methods`) was emitting bare without `await this.` prefix. The existing sibling-method rewrite only knew about methods in the SAME class IR.
+
+**Fix:** new catch-all in `pageObjectEmitter.ts`. After the sibling rewrite fires, any bare lowercase-camelCase identifier followed by `(` gets rewritten to `await this.<name>(` UNLESS:
+
+- Already prefixed with `.` (chained call) or `await ` 
+- Identifier is in the JS/TS keyword/global blacklist (`if`, `for`, `console`, `expect`, `JSON`, `Math`, `parseInt`, `describe`, `beforeEach`, etc.)
+- Identifier matches a method parameter name
+
+If the user's class has a real inherited method, this rewrite is correct. If the bare call was something else entirely, TS will error and the user fixes it — better than silently broken output.
+
+### Files changed
+
+- `src/transformers/baseTestExtractor.ts` — extended `stripDriverBoilerplate` (Patch J)
+- `src/transformers/apiMap.ts` — sendKeys nested-paren regex (Patch K)
+- `src/transformers/javaIdiomMap.ts` — static-prefix helpers + clearAndSendKeys family (L); Driver.get static accessor (M); Java collection literals (N); enhanced-for loops (O)
+- `src/emitters/pageObjectEmitter.ts` — catch-all bare-method-call rewrite for inherited methods (Patch P)
+- `package.json` — bump to 0.11.3
+- `CHANGELOG.md` — this entry
+
+### Verification expectations
+
+After running 0.11.3 against the user's production codebase:
+
+```typescript
+// Should now look like:
+async login(): Promise<void> {
+  await this.navigateToLoginPage();   // Patch P
+  await this.emailBox.fill(ConfigurationReader["email"]);  // Patch K
+  await this.devamBtn.click();
+  await this.passwordBox.fill(ConfigurationReader["password"]);  // Patch L
+  await this.girisYapBtnLogin.click();
+}
+
+static async getElementsText(locator: string): Promise<string[]> {
+  const elems = this.page.locator(locator);  // Patch M (Driver.get → this.page)
+  const elemTexts = [];                       // Patch N (new ArrayList<>() → [])
+
+  for (const el of await elems.all()) {       // Patch O (enhanced-for → for-of with .all())
+    elemTexts.push(await el.innerText());
+  }
+  return elemTexts;
+}
+```
+
+---
+
+## [0.11.2] — Real-user feedback patch: `By` parameter type + `driver.findElement(<param>)` body rewrite
+
+Single-patch follow-up to v0.11.1. User ran v0.11.1 against their production codebase and surfaced two bugs in the same method signature.
+
+### The bug
+
+A `BasePage` with helper methods like:
+
+```java
+public void click(By elementLocation) {
+  driver.findElement(elementLocation).click();
+}
+```
+
+…was emitting as:
+
+```typescript
+async click(elementLocation: By): Promise<void> {
+  await this.elementLocation.click();
+}
+```
+
+Two distinct bugs:
+
+1. **Parameter type `By` leaked through unchanged.** `pageObjectEmitter.ts` used `javaTypeToTs(p.javaType)` for params, which doesn't know about Selenium types — it passes `By` through verbatim because it looks like a "user-defined class". Caller code now references a non-existent type.
+
+2. **Body rewrite was wrong for parameters.** `apiMap.ts` has a rule `driver.findElement(<bareField>) → this.<bareField>` that's correct when `<bareField>` is a class field, but produces broken output when it's a method parameter — `this.elementLocation` doesn't exist; `elementLocation` is parameter-scope local.
+
+### The fix
+
+Three coordinated changes in `src/emitters/pageObjectEmitter.ts`:
+
+**1. `rewriteSeleniumType()` helper** for both parameter types AND return types:
+
+| Java | TypeScript |
+| --- | --- |
+| `By` | `string` |
+| `WebElement` | `Locator` |
+| `WebDriver` | `Page` |
+| `Keys` | `string` |
+| `List<WebElement>` | `Locator` |
+| `List<By>` | `string[]` |
+| anything else | passed through `javaTypeToTs` |
+
+**2. Pre-process body for `By` parameters before `bodyTransformer` runs.** For each `By`-typed parameter `<paramName>`, rewrite `driver.findElement(<paramName>)` → `this.page.locator(<paramName>)` and `driver.findElements(<paramName>)` similarly. This way the apiMap "bare-field" rule never sees the parameter form.
+
+**3. Exclude method parameter names from the field-prefix loop.** If a parameter happens to share a name with a Page Object field, don't prepend `this.` — parameters are always method-local. Defensive against future name collisions.
+
+### After 0.11.2
+
+The same `BasePage` now emits cleanly:
+
+```typescript
+import { Page, Locator, expect } from '@playwright/test';
+
+export class BasePage {
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
+
+  async click(elementLocation: string): Promise<void> {
+    await this.page.locator(elementLocation).click();
+  }
+
+  async writeText(elementLocation: string, text: string): Promise<void> {
+    await this.page.locator(elementLocation).fill(text);
+  }
+
+  async readText(elementLocation: string): Promise<string> {
+    return await this.page.locator(elementLocation).innerText();
+  }
+}
+```
+
+That's idiomatic Playwright TS — selectors as strings, locators created from `this.page.locator(...)`, every action awaited.
+
+### Files changed
+
+- `src/emitters/pageObjectEmitter.ts` — added `rewriteSeleniumType()` helper, pre-process body for `By` params, exclude param names from field-prefix loop
+- `package.json` — bump to 0.11.2
+- `CHANGELOG.md` — this entry
+
+### Verification
+
+After running 0.11.2 on a Page Object with `By` / `WebElement` / `WebDriver` parameters, search the output:
+
+```bash
+# These should ALL return zero matches in pages/*.ts:
+grep -n ": By" pages/*.ts
+grep -n ": WebElement" pages/*.ts
+grep -n ": WebDriver" pages/*.ts
+grep -nE "this\.[a-z][a-zA-Z]*\.click" pages/*.ts | grep -v "this\.page" # should match field references only
+```
+
+---
+
 ## [0.11.1] — Real-user feedback patches: PageObjects naming + Selenium-aware utility conversion
 
 **First patch driven by a real production codebase.** Three observations from running 0.11.0 against a real internal Selenium suite, all patched.
@@ -100,7 +314,7 @@ Applied in `extractLocatorFields` so the IR carries clean names, which flow thro
 - `src/utils/naming.ts` — `pageObjectFileName()` strips new suffixes (A); `toCamelCase()` handles snake_Case (H)
 - `src/emitters/testClassEmitter.ts` — `pageObjectImportPath()` strips new suffixes (A)
 - `src/reports/conversionResult.ts` — lookup regex strips new suffixes (A)
-- `src/emitters/helperClassEmitter.ts` — **new** (B); now also `Keys`-aware (G)
+- `src/emitters/helperClassEmitter.ts` — **new** (B); `Keys`-aware (G)
 - `src/parser/javaExtractor.ts` — dedupe `*_Locator` siblings + camelCase field names (E + H)
 - `src/transformers/javaIdiomMap.ts` — project-specific reporter wrappers + SLF4J placeholders (F)
 - `src/index.ts` — wire `hasSeleniumApi(file.source)` check before `emitUtilityStub` (B)

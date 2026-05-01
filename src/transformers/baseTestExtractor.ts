@@ -131,18 +131,72 @@ export function emitFixture(
 }
 
 function stripDriverBoilerplate(body: string): string {
-  return body
+  // After all the line-level filters below, do one final pass to rewrite
+  // bare `driver` identifier references to `page` — the Playwright fixture
+  // doesn't expose a `driver` variable, but BaseTest bodies frequently use
+  // `someHelper(driver)` / `driver.executeScript(...)` / `driver.something`
+  // patterns that the apiMap rules don't cover. v0.11.3.
+  const filtered = body
     .split("\n")
     .filter((line) => {
       const t = line.trim();
-      if (/^driver\s*=\s*new\s+(Chrome|Firefox|Edge|Safari)Driver/.test(t)) return false;
-      if (/^driver\.manage\(\)\.window\(\)\.maximize\(\)/.test(t)) return false;
+
+      // Driver instantiation
+      if (/^driver\s*=\s*new\s+(Chrome|Firefox|Edge|Safari|Remote|InternetExplorer)Driver/.test(t)) return false;
       if (/^WebDriver\s+driver\s*=/.test(t)) return false;
+      if (/^driver\s*=\s*new\s+\w+Driver\s*\(/.test(t)) return false;
+
+      // Window management
+      if (/^driver\.manage\(\)\.window\(\)\.maximize\(\)/.test(t)) return false;
+      if (/^driver\.manage\(\)\.window\(\)\.setSize\b/.test(t)) return false;
+      if (/^driver\.manage\(\)\.window\(\)\.setPosition\b/.test(t)) return false;
+
+      // Cookie / timeout / log management
+      if (/^driver\.manage\(\)\.deleteAllCookies\b/.test(t)) return false;
+      if (/^driver\.manage\(\)\.timeouts\(\)\./.test(t)) return false;
+      if (/^driver\.manage\(\)\.logs\(\)\./.test(t)) return false;
+
+      // null-guards around driver
       if (/^if\s*\(\s*driver\s*!=\s*null\s*\)/.test(t)) return false;
+      if (/^if\s*\(\s*driver\s*==\s*null\s*\)/.test(t)) return false;
+
+      // WebDriverWait setup (added in v0.11.3 — Playwright auto-waits make
+      // this entirely unnecessary; let it leak and the converted fixture
+      // has dead Java code). v0.11.3 Patch Q: also covers `const wait = ...`
+      // / `let wait = ...` / `var wait = ...` declarations (post-Java→TS
+      // const-conversion form).
+      if (/^WebDriverWait\s+\w+\s*=/.test(t)) return false;
+      if (/^(?:const|let|var|final)\s+\w+\s*=\s*new\s+WebDriverWait\s*\(/.test(t)) return false;
+      if (/^\w+\s*=\s*new\s+WebDriverWait\s*\(/.test(t)) return false;
+      if (/^FluentWait\s+\w+\s*=/.test(t)) return false;
+      if (/^(?:const|let|var|final)\s+\w+\s*=\s*new\s+FluentWait\s*\(/.test(t)) return false;
+      if (/^\w+\s*=\s*new\s+FluentWait\s*\(/.test(t)) return false;
+
+      // Browser options / capabilities setup (Selenium-only — Playwright
+      // configures these in playwright.config.ts → projects → use)
+      if (/^(?:Chrome|Firefox|Edge|Safari)Options\s+\w+\s*=/.test(t)) return false;
+      if (/^\w+\s*=\s*new\s+(?:Chrome|Firefox|Edge|Safari)Options\b/.test(t)) return false;
+      if (/^DesiredCapabilities\s+\w+\s*=/.test(t)) return false;
+      if (/^\w+\.addArguments?\s*\(/.test(t)) return false;
+      if (/^\w+\.setCapability\s*\(/.test(t)) return false;
+      if (/^\w+\.setExperimentalOption\s*\(/.test(t)) return false;
+      if (/^\w+\.merge\s*\(\s*\w*[Cc]apabilit/.test(t)) return false;
+
+      // WebDriverManager setup (the bonigarcia bootstrap library)
+      if (/^WebDriverManager\.\w+\s*\(\s*\)\.setup\s*\(/.test(t)) return false;
+
+      // System.setProperty for driver paths (predates WebDriverManager)
+      if (/^System\.setProperty\s*\(\s*"webdriver\.\w+\.driver"/.test(t)) return false;
+
       // Keep `driver.quit();` — it gets rewritten to a no-op by apiMap.
       return true;
     })
     .join("\n");
+
+  // Bare `driver` identifier → `page`. The negative lookahead/behind keep
+  // us from rewriting `driver.something` (apiMap handles that surface) or
+  // identifiers like `myDriver` / `driverPool`.
+  return filtered.replace(/\bdriver\b(?!\s*\.)/g, "page");
 }
 
 function extractLifecycleHooks(source: string): ExtractedHook[] {

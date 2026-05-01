@@ -17,6 +17,7 @@ import {
   emitUtilityStub,
 } from "./transformers/customUtilDetector";
 import { hasSeleniumApi, emitConvertibleHelper } from "./emitters/helperClassEmitter";
+import { buildAutoImportIndex, detectMissingImports } from "./emitters/autoImports";
 import { prettyPrint } from "./post/prettierFormat";
 import { tscValidate } from "./post/tscValidate";
 import { eslintValidate } from "./post/eslintValidate";
@@ -454,6 +455,39 @@ export async function convert(opts: ConvertOptions): Promise<{
   }
 
   let postFiles = converted;
+
+  // v0.11.3 Patch DD: scan every emitted .ts file for cross-references
+  // (Page Object → Page Object, helper → Page Object, spec → helper) and
+  // prepend missing `import { X } from 'y'` lines. Without this, Page
+  // Object inheritance (`LoginPage extends BasePage`) and helper-class
+  // usage in tests left missing-import gaps the user had to fix by hand.
+  {
+    const importIndex = buildAutoImportIndex(postFiles);
+    postFiles = postFiles.map((cf) => {
+      if (!cf.relPath.endsWith(".ts")) return cf;
+      // Identify the class defined inside this file so we don't self-import.
+      const ownClass = (cf.source.match(/^export\s+(?:abstract\s+)?class\s+(\w+)/m) ?? [])[1];
+      const exclude = new Set<string>();
+      if (ownClass) exclude.add(ownClass);
+      const missing = detectMissingImports(cf.source, cf.relPath, importIndex, exclude);
+      if (missing.length === 0) return cf;
+      // Insert AFTER existing `import` lines (or at top if none).
+      const lines = cf.source.split("\n");
+      let insertAt = 0;
+      for (let i = 0; i < lines.length; i += 1) {
+        if (/^\s*import\s+/.test(lines[i])) insertAt = i + 1;
+        else if (insertAt > 0 && lines[i].trim() === "") break;
+        else if (insertAt === 0 && lines[i].trim() !== "" && !/^\s*\/\//.test(lines[i])) break;
+      }
+      const newLines = [
+        ...lines.slice(0, insertAt),
+        ...missing,
+        ...lines.slice(insertAt),
+      ];
+      return { ...cf, source: newLines.join("\n") };
+    });
+  }
+
   if (opts.emitTodoMarkers !== false) {
     postFiles = insertTodoMarkers(postFiles, warnings);
   }

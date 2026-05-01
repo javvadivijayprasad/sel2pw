@@ -41,6 +41,164 @@ export function applyJavaIdiomRewrites(
   let body = raw;
 
   // ============================================================
+  // -3) Chained <expr>.sendKeys / .getText / .clear (v0.11.3 Patch W)
+  // ============================================================
+  // apiMap's rules anchor on `<word>.sendKeys` (single bare or this.field
+  // identifier). Real-world code chains: `someExpr().sendKeys(x)`,
+  // `this.page.locator(x).sendKeys(y)`, `el.findElement(by).getText()`.
+  // Catch the chain forms here (post-apiMap) so they convert too.
+
+  // <chain>.sendKeys(<expr>) → await <chain>.fill(<expr>)
+  // The `(?<!await\s)` prevents double-awaiting if apiMap already caught
+  // the simple case.
+  body = body.replace(
+    /(?<!await\s)([\w.]+\([^)]*\)|[\w.]+(?:\([^)]*\))*)\.sendKeys\s*\(\s*((?:[^)(]|\([^)(]*\))+)\s*\)\s*;/g,
+    "await $1.fill($2);",
+  );
+  // <chain>.getText() → await <chain>.innerText()
+  body = body.replace(
+    /(?<!await\s)([\w.]+\([^)]*\)|[\w.]+(?:\([^)]*\))*)\.getText\s*\(\s*\)/g,
+    "await $1.innerText()",
+  );
+  // <chain>.click() with await prefix
+  body = body.replace(
+    /(?<!await\s)([\w.]+\([^)]*\))\.click\s*\(\s*\)\s*;/g,
+    "await $1.click();",
+  );
+
+  // ============================================================
+  // -2) WebDriverWait + ExpectedConditions chains (v0.11.3 Patch V)
+  // ============================================================
+  // These can appear ANYWHERE — Page Object methods, test bodies, helper
+  // classes — not just BaseTest fixtures (where Patch J already strips
+  // them). When found inside a method body, replace the whole chain with
+  // a `// TODO(sel2pw)` comment so the user knows to use Playwright
+  // auto-waits / `expect().toBeVisible()` instead.
+
+  // `const wait = new WebDriverWait(<anything-with-nested-parens>, <args>);` → comment
+  // Patch Y: argument matcher allows TWO levels of nested parens so calls
+  // like `new WebDriverWait(this.page, Duration.ofSeconds(30))` match.
+  // Replacement uses plain quotes (no backticks) to avoid Patch U
+  // protect-and-restore drama in pageObjectEmitter.
+  body = body.replace(
+    /(?:const|let|var|final)?\s*\w+\s*=\s*new\s+WebDriverWait\s*\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)\s*;?/g,
+    "// TODO(sel2pw): WebDriverWait removed - Playwright auto-waits handle visibility/clickability. Use 'await expect(locator).toBeVisible()' or locator.waitFor() for specific assertions.",
+  );
+  // Bare `new WebDriverWait(...)` (assigned to a chain or used inline)
+  body = body.replace(
+    /\bnew\s+WebDriverWait\s*\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)/g,
+    "/* WebDriverWait removed */",
+  );
+  // `wait.until(ExpectedConditions.X(...))` chains — rewrite to
+  // `await locator.waitFor()` if we can identify the locator, otherwise
+  // a TODO comment.
+  body = body.replace(
+    /\b\w+\.until\s*\(\s*ExpectedConditions\.visibilityOf(?:Element|AllElements|ElementLocated)?\s*\(\s*([^)]+?)\s*\)\s*\)\s*;?/g,
+    "await $1.waitFor({ state: 'visible' });",
+  );
+  body = body.replace(
+    /\b\w+\.until\s*\(\s*ExpectedConditions\.invisibilityOf(?:Element|ElementLocated)?\s*\(\s*([^)]+?)\s*\)\s*\)\s*;?/g,
+    "await $1.waitFor({ state: 'hidden' });",
+  );
+  body = body.replace(
+    /\b\w+\.until\s*\(\s*ExpectedConditions\.elementToBeClickable\s*\(\s*([^)]+?)\s*\)\s*\)\s*;?/g,
+    "await $1.waitFor({ state: 'visible' });",
+  );
+  body = body.replace(
+    /\b\w+\.until\s*\(\s*ExpectedConditions\.textToBePresentInElement\w*\s*\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)\s*\)\s*;?/g,
+    "await expect($1).toHaveText($2);",
+  );
+  body = body.replace(
+    /\b\w+\.until\s*\(\s*ExpectedConditions\.urlContains\s*\(\s*([^)]+?)\s*\)\s*\)\s*;?/g,
+    "await page.waitForURL(new RegExp($1));",
+  );
+  // Generic catch-all for any other ExpectedConditions chain
+  body = body.replace(
+    /\b\w+\.until\s*\(\s*ExpectedConditions\.[\w$]+\s*\([^)]*\)\s*\)\s*;?/g,
+    "// TODO(sel2pw): ExpectedConditions chain - use Playwright's auto-waits or expect(locator).<assertion>()",
+  );
+
+  // v0.11.3 Patch CC: orphan `.until(ExpectedConditions...)` chains —
+  // when Patch V removed `new WebDriverWait(...)` it left a dangling
+  // `.until(...)` chain that doesn't match the `<word>.until` pattern
+  // above. Two shapes to catch:
+  //   `/* WebDriverWait removed */\n  .until(ExpectedConditions...)`
+  //   `// TODO(sel2pw): ...\n  .until(ExpectedConditions...)`
+  body = body.replace(
+    /(?:\/\*\s*WebDriverWait removed\s*\*\/|\/\/\s*TODO\(sel2pw\)[^\n]*WebDriverWait[^\n]*)\s*[\r\n]+\s*\.until\s*\(\s*ExpectedConditions\.\w+\s*\([^)]*\)\s*\)\s*;?/g,
+    "// TODO(sel2pw): WebDriverWait + ExpectedConditions chain removed - use `await expect(locator).toBeVisible()` etc.",
+  );
+
+  // Also catch the bare orphan form `.until(...)` at the start of a line
+  // (which can happen after a multi-line WebDriverWait removal)
+  body = body.replace(
+    /^\s*\.until\s*\(\s*ExpectedConditions\.\w+\s*\([^)]*\)\s*\)\s*;?/gm,
+    "// TODO(sel2pw): orphan .until() chain - removed (Playwright auto-waits)",
+  );
+
+  // Standalone Thread.sleep(<expr>) — apiMap handles `Thread.sleep(\d+)`
+  // (literal int) but real codebases use `Thread.sleep(timeoutVar)` or
+  // `Thread.sleep(seconds * 1000)`. Catch the variable / expression form.
+  body = body.replace(
+    /\bThread\.sleep\s*\(\s*([^)]+?)\s*\)\s*;/g,
+    "await page.waitForTimeout($1); // TODO(sel2pw): Playwright auto-waits often make this unnecessary",
+  );
+
+  // ============================================================
+  // -1) Standalone By.X(...) → string selector (v0.11.3 Patch T)
+  // ============================================================
+  // When `By.id("user")` etc. appear OUTSIDE a `driver.findElement(...)`
+  // wrapper (e.g. as an argument to a custom helper like
+  // `BrowserUtils.waitForClickability(By.id("user"), 7)`), apiMap doesn't
+  // catch them — its rules anchor on `findElement`. Translate the bare
+  // By.* call to its CSS / XPath string equivalent so downstream
+  // helpers (now Locator-aware after Patch B / I) receive a string.
+
+  // By.id("x") → "#x"
+  body = body.replace(/\bBy\.id\s*\(\s*"([^"]*)"\s*\)/g, '"#$1"');
+  // By.id(varOrExpr) → `#${varOrExpr}` (template literal so dynamic values still work)
+  body = body.replace(/\bBy\.id\s*\(\s*([^)"][^)]*?)\s*\)/g, "`#${$1}`");
+
+  // By.name("x") → '[name="x"]'
+  body = body.replace(/\bBy\.name\s*\(\s*"([^"]*)"\s*\)/g, '\'[name="$1"]\'');
+  body = body.replace(/\bBy\.name\s*\(\s*([^)"][^)]*?)\s*\)/g, '`[name="${$1}"]`');
+
+  // By.cssSelector("x") / By.css("x") → "x" (CSS is the default in
+  // page.locator)
+  body = body.replace(/\bBy\.(?:cssSelector|css)\s*\(\s*("[^"]*")\s*\)/g, "$1");
+
+  // By.xpath("x") → "xpath=x"
+  body = body.replace(/\bBy\.xpath\s*\(\s*"([^"]*)"\s*\)/g, '"xpath=$1"');
+  // Patch X (extended in v0.11.3 patch Z): concatenated xpath strings —
+  // `By.xpath("//tr[" + name + "]")` becomes a template literal. We grab
+  // everything inside the outer parens. Three levels of nested-paren
+  // support so XPath expressions like `//a[contains(text(),'X')]` (2
+  // levels: contains, text) AND deeper ones (`//a[contains(normalize-space(text()),'X')]`)
+  // are handled.
+  body = body.replace(
+    /\bBy\.xpath\s*\(\s*((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))+)\s*\)/g,
+    (_m, expr: string) => {
+      // If it's already a single quoted literal, the rule above handled it.
+      if (/^"[^"]*"$/.test(expr.trim())) return _m;
+      // Otherwise wrap the runtime-built xpath with the `xpath=` prefix.
+      return `("xpath=" + (${expr.trim()}))`;
+    },
+  );
+
+  // By.linkText("x") / By.partialLinkText("x") — best translated as a
+  // CSS-like attribute selector since Playwright's getByRole would need
+  // page context. We emit a literal text-matching selector.
+  body = body.replace(/\bBy\.linkText\s*\(\s*"([^"]*)"\s*\)/g, '"a:has-text(\\"$1\\")"');
+  body = body.replace(/\bBy\.partialLinkText\s*\(\s*"([^"]*)"\s*\)/g, '"a:has-text(\\"$1\\")"');
+
+  // By.tagName("x") → "x" (tag selector in CSS)
+  body = body.replace(/\bBy\.tagName\s*\(\s*"([^"]*)"\s*\)/g, '"$1"');
+
+  // By.className("x") → ".x"
+  body = body.replace(/\bBy\.className\s*\(\s*"([^"]*)"\s*\)/g, '".$1"');
+  body = body.replace(/\bBy\.className\s*\(\s*([^)"][^)]*?)\s*\)/g, "`.${$1}`");
+
+  // ============================================================
   // 0) Project-specific reporter wrappers (v0.11.1 Patch F)
   // ============================================================
   // Real-world Java frameworks wrap test reporting in a custom helper
@@ -71,6 +229,15 @@ export function applyJavaIdiomRewrites(
   // current WebDriver. In Playwright the `page` fixture is the equivalent.
   body = body.replace(
     /\b(?:returnDriver|getDriver|getWebDriver|driverInstance|currentDriver)\s*\(\s*\)/g,
+    "this.page",
+  );
+
+  // v0.11.3 Patch M: static-style Driver accessor — `Driver.get()` /
+  // `Driver.getDriver()` / `DriverManager.getDriver()` etc. These wrap a
+  // ThreadLocal<WebDriver> and return the current driver instance.
+  // Playwright's `page` fixture is the equivalent.
+  body = body.replace(
+    /\b(?:Driver|DriverManager|DriverFactory|BrowserDriver|WebDriverManager|DriverPool)\s*\.\s*(?:get|getDriver|getInstance|currentDriver|driver)\s*\(\s*\)/g,
     "this.page",
   );
 
@@ -152,25 +319,46 @@ export function applyJavaIdiomRewrites(
 
   // clickElement(el, ...) → await el.click()
   // The trailing args (label, page name, etc) are descriptive — drop them.
+  // v0.11.3 Patch L: leading `(?:\w+\.)?` absorbs static-prefix forms like
+  // `BrowserUtils.clickElement(...)` or `Helpers.safeClick(...)`. Without
+  // this, those rewrites left the static prefix in place and broke output.
   body = body.replace(
-    /\bclickElement\s*\(\s*([\w.]+)\s*(?:,\s*[^)]*)?\)/g,
+    /\b(?:\w+\.)?clickElement\s*\(\s*([\w.]+)\s*(?:,\s*[^)]*)?\)/g,
     "await $1.click()",
   );
-  // safeClick(el) / clickWithRetry(el) / waitAndClick(el) — all just click.
   body = body.replace(
-    /\b(?:safeClick|clickWithRetry|waitAndClick|robustClick|forceClick)\s*\(\s*([\w.]+)\s*(?:,\s*[^)]*)?\)/g,
+    /\b(?:\w+\.)?(?:safeClick|clickWithRetry|waitAndClick|robustClick|forceClick|jsClick|doubleClickElement)\s*\(\s*([\w.]+)\s*(?:,\s*[^)]*)?\)/g,
     "await $1.click()",
   );
 
   // enterText(el, text) → await el.fill(text)
+  // Static-prefix-aware (Patch L).
   body = body.replace(
-    /\benterText\s*\(\s*([\w.]+)\s*,\s*([^)]+?)\s*\)/g,
+    /\b(?:\w+\.)?enterText\s*\(\s*([\w.]+)\s*,\s*([^)]+?)\s*\)/g,
     "await $1.fill($2)",
   );
-  // typeText / sendText / inputText — same family.
+  // typeText / sendText / inputText / clearAndSendKeys / clearAndType /
+  // clearAndFill — same fill-family. clearAndSendKeys works because
+  // Playwright's fill() clears the field before typing.
   body = body.replace(
-    /\b(?:typeText|sendText|inputText|fillText)\s*\(\s*([\w.]+)\s*,\s*([^)]+?)\s*\)/g,
+    /\b(?:\w+\.)?(?:typeText|sendText|inputText|fillText|clearAndSendKeys|clearAndType|clearAndFill|clearAndSetText|setText)\s*\(\s*([\w.]+)\s*,\s*([^)]+?)\s*\)/g,
     "await $1.fill($2)",
+  );
+
+  // selectFromDropdown(el, "value") / selectByText(el, "text") family
+  body = body.replace(
+    /\b(?:\w+\.)?(?:selectFromDropdown|selectByText|selectOption|selectByVisibleTextHelper)\s*\(\s*([\w.]+)\s*,\s*([^)]+?)\s*\)/g,
+    "await $1.selectOption({ label: $2 })",
+  );
+
+  // hoverOver(el) / mouseHover(el) / scrollTo(el) — common helpers
+  body = body.replace(
+    /\b(?:\w+\.)?(?:hoverOver|mouseHover|hoverOnElement)\s*\(\s*([\w.]+)\s*(?:,\s*[^)]*)?\)/g,
+    "await $1.hover()",
+  );
+  body = body.replace(
+    /\b(?:\w+\.)?(?:scrollTo|scrollToElement|scrollIntoView)\s*\(\s*([\w.]+)\s*(?:,\s*[^)]*)?\)/g,
+    "await $1.scrollIntoViewIfNeeded()",
   );
 
   // getText(el) (custom wrapper, not the WebElement method) →
@@ -326,6 +514,51 @@ export function applyJavaIdiomRewrites(
   body = body.replace(
     /\bCollections\.reverse\s*\(\s*([\w.]+)\s*\)/g,
     "$1.reverse()",
+  );
+
+  // v0.11.3 Patch N: Java collection literals.
+  // `new ArrayList<>()` / `new ArrayList<String>()` / `new LinkedList<>()` → `[]`
+  // `new HashMap<>()` / `new HashMap<String,String>()` → `{}`
+  // `new HashSet<>()` / `new TreeSet<>()` → `new Set()`
+  body = body.replace(
+    /\bnew\s+(?:ArrayList|LinkedList|Vector|Stack|CopyOnWriteArrayList)\s*<[^>]*>\s*\(\s*\)/g,
+    "[]",
+  );
+  body = body.replace(
+    /\bnew\s+(?:ArrayList|LinkedList|Vector|Stack|CopyOnWriteArrayList)\s*\(\s*\)/g,
+    "[]",
+  );
+  body = body.replace(
+    /\bnew\s+(?:HashMap|LinkedHashMap|TreeMap|ConcurrentHashMap|Hashtable)\s*<[^>]*>\s*\(\s*\)/g,
+    "{}",
+  );
+  body = body.replace(
+    /\bnew\s+(?:HashMap|LinkedHashMap|TreeMap|ConcurrentHashMap|Hashtable)\s*\(\s*\)/g,
+    "{}",
+  );
+  body = body.replace(
+    /\bnew\s+(?:HashSet|LinkedHashSet|TreeSet|CopyOnWriteArraySet)\s*<[^>]*>\s*\(\s*\)/g,
+    "new Set()",
+  );
+  body = body.replace(
+    /\bnew\s+(?:HashSet|LinkedHashSet|TreeSet|CopyOnWriteArraySet)\s*\(\s*\)/g,
+    "new Set()",
+  );
+
+  // v0.11.3 Patch O: Java enhanced-for loops.
+  // `for (WebElement el : elems)` → `for (const el of await elems.all())`
+  //    (assumes `elems` is a Locator — Playwright Locator needs `.all()`
+  //    to iterate as Locator[] in for-of).
+  // `for (String s : list)` → `for (const s of list)` (already TS-valid).
+  // `for (Type var : iterable)` → `for (const var of iterable)` for any
+  // non-WebElement type.
+  body = body.replace(
+    /\bfor\s*\(\s*WebElement\s+(\w+)\s*:\s*([\w.]+)\s*\)/g,
+    "for (const $1 of await $2.all())",
+  );
+  body = body.replace(
+    /\bfor\s*\(\s*(?:final\s+)?[\w<>[\],\s?]+?\s+(\w+)\s*:\s*([\w.()]+?)\s*\)/g,
+    "for (const $1 of $2)",
   );
 
   // ============================================================
