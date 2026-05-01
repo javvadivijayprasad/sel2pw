@@ -41,6 +41,52 @@ export function applyJavaIdiomRewrites(
   let body = raw;
 
   // ============================================================
+  // -5) Strip Java method declarations leaking into bodies (Patch GG)
+  // ============================================================
+  // selenium13's add-product.page.ts shows:
+  //   `public void await this.verifyNewProduct(String category, ...) {`
+  // — this is a Java method declaration that the extractor failed to
+  // recognise as a separate method (likely because of an inner class or
+  // lambda boundary the regex didn't see). It got dragged into another
+  // method's body. Strip these so the file at least parses.
+  body = body.replace(
+    /^[\t ]*(?:public|private|protected)(?:\s+(?:static|final|synchronized|abstract))*\s+(?:void|[\w<>[\],\s?]+)\s+\w+\s*\([^)]*\)\s*(?:throws\s+[\w.,\s]+)?\s*\{?\s*$/gm,
+    "// TODO(sel2pw): inner Java method declaration removed - port manually if needed",
+  );
+
+  // Strip `@throws Exception` / `@param` Javadoc tags inside method bodies
+  // (they're harmless but TS doesn't expect them at file-body scope when
+  // they leak from JSDoc into adjacent statements).
+  body = body.replace(
+    /^[\t ]*\*\s*@(throws|param|return)\s+[^\n]*$/gm,
+    "",
+  );
+
+  // ============================================================
+  // -4) Java-typed local declarations → const (v0.11.3 Patch EE)
+  // ============================================================
+  // Strip Java type prefixes from local variable declarations inside method
+  // bodies. `By rowLocator = By.xpath("...")` → `const rowLocator = By.xpath("...")`.
+  // The existing Phase-7 const-rewrite only handles a narrow set; this is
+  // the comprehensive version covering Selenium types, generics, and arrays.
+  //
+  // Order matters: must fire BEFORE other rules that rewrite the RHS, so
+  // `By rowLocator = By.xpath(...)` becomes `const rowLocator = By.xpath(...)`,
+  // then Patch T converts the RHS to a string selector.
+  body = body.replace(
+    /^([\t ]*)(?:final\s+)?(?:By|WebElement|WebDriver|Locator|Page|String|Integer|Long|Double|Float|Boolean|Object|Number|Date|Map|HashMap|LinkedHashMap|TreeMap|List|ArrayList|LinkedList|Set|HashSet|TreeSet|JsonObject|JsonArray|JSONObject|JSONArray)(?:<[^>]*>)?(?:\[\])?\s+(\w+)\s*=\s*/gm,
+    "$1const $2 = ",
+  );
+  // Also handle `final` + custom user types — anything that looks like a
+  // PascalCase identifier as the type, followed by a variable name + `=`.
+  // Conservative: only at line start, only when the type is clearly a
+  // class name (uppercase first char, no spaces in it).
+  body = body.replace(
+    /^([\t ]*)(?:final\s+)?([A-Z]\w+)(?:<[^>]*>)?(?:\[\])?\s+([a-z]\w*)\s*=\s*new\s+\2/gm,
+    (m, indent: string, _type: string, name: string) => `${indent}const ${name} = new ${_type}`,
+  );
+
+  // ============================================================
   // -3) Chained <expr>.sendKeys / .getText / .clear (v0.11.3 Patch W)
   // ============================================================
   // apiMap's rules anchor on `<word>.sendKeys` (single bare or this.field
@@ -528,8 +574,11 @@ export function applyJavaIdiomRewrites(
     /\bnew\s+(?:ArrayList|LinkedList|Vector|Stack|CopyOnWriteArrayList)\s*\(\s*\)/g,
     "[]",
   );
+  // Patch FF: HashMap with multi-arg generics — `new HashMap<String, Object>()`.
+  // The `<[^>]*>` matches one level of generic; `<[^<>]*(?:<[^>]*>[^<>]*)*>`
+  // handles nested generics like `Map<String, List<Foo>>`.
   body = body.replace(
-    /\bnew\s+(?:HashMap|LinkedHashMap|TreeMap|ConcurrentHashMap|Hashtable)\s*<[^>]*>\s*\(\s*\)/g,
+    /\bnew\s+(?:HashMap|LinkedHashMap|TreeMap|ConcurrentHashMap|Hashtable)\s*<[^<>]*(?:<[^>]*>[^<>]*)*>\s*\(\s*\)/g,
     "{}",
   );
   body = body.replace(

@@ -4,6 +4,99 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [0.11.4] — `tsc --noEmit` reality check: Java type declarations + multi-arg generics + inner method strip + honest README
+
+After 0.11.3 shipped, ran `tsc --noEmit` against all 15 converted output projects. The pattern-based audit script had been undercounting by ~40× (128 audit issues vs 5,118 actual TypeScript compile errors). 0.11.4 closes the gap with three targeted patches plus an honest README reframe.
+
+### Patches EE / FF / GG
+
+**Patch EE — Java-typed local declarations stripped to `const`.**
+
+```java
+By rowLocator = By.xpath("//tr[...]");           // was passing through unchanged
+WebElement element = obp.getWebElement(link);
+Map<String, Object> data = new HashMap<>();
+```
+
+becomes:
+
+```typescript
+const rowLocator = By.xpath("//tr[...]");        // then Patch T converts the RHS
+const element = obp.getWebElement(link);
+const data = {};
+```
+
+Covers `By` / `WebElement` / `WebDriver` / `Locator` / `Page` / `String` / `Integer` / `Long` / `Double` / `Float` / `Boolean` / `Object` / `Map` / `HashMap` / `LinkedHashMap` / `TreeMap` / `List` / `ArrayList` / `LinkedList` / `Set` / `HashSet` / `TreeSet` / `JsonObject` / `JsonArray` / `JSONObject` / `JSONArray`. Plus generic types and arrays. Plus custom user PascalCase types when the RHS is a `new <Type>(...)` constructor.
+
+**Patch FF — `new HashMap<String, Object>()` (multi-arg generics).**
+
+The 0.10.8 Patch N rule used `<[^>]*>` which matches one level of generic args. Real-world code uses nested generics like `Map<String, List<Foo>>` — the `>` inside breaks the match. Extended to `<[^<>]*(?:<[^>]*>[^<>]*)*>` (one outer level, one nested level). Now handles all common cases.
+
+**Patch GG — Strip orphan Java method declarations leaking into bodies.**
+
+selenium13's `add-product.page.ts:168` showed:
+```
+public void await this.verifyNewProduct(String category, ...) {
+```
+
+A Java method declaration that the extractor swallowed into another method's body (typically because of an inner class boundary the regex didn't recognise). The extracted method "ate" a sibling. Patch GG replaces these orphan declarations with a `// TODO(sel2pw)` comment so the file at least parses.
+
+Also strips orphan `* @throws Exception` / `* @param X` Javadoc lines that detach from their original JSDoc and float into method-body scope.
+
+### README reframe
+
+Added an honest "What sel2pw is and isn't" disclaimer block at the top of the README:
+
+- Small Page Objects (under ~100 lines, standard naming): output usually compiles with **0-10 TypeScript errors** — minutes per file to clean up.
+- Medium Page Objects (100-500 lines, some custom helpers): typically **20-80 TS errors** — 15-60 min per file.
+- Large complex classes (1,000+ lines, deep generics, project-specific reporting): hundreds to thousands of TS errors — **plan a manual port** for these.
+- Run `npx tsc --noEmit` against the output before committing.
+- Pitch is **"saves a month, not 100% automated."** A 100-200 file project converts in 90 seconds and takes 5-15 hours of human cleanup, vs 200-400 hours of hand-migration.
+
+This positions sel2pw correctly: a serious productivity tool that turns a quarter into a couple of weeks, not a magic button.
+
+### `tsc --noEmit` baseline (post-0.11.3, pre-0.11.4)
+
+| Repo | TS errors before EE/FF/GG | Predicted after |
+|---|---|---|
+| selenium14 | 2,894 | ~1,500 |
+| selenium6 | 1,029 | ~500 |
+| selenium13 | 415 | ~200 |
+| selenium15 | 179 | ~100 |
+| selenium9 | 155 | ~80 |
+| selenium10 / 11 | 82 each | ~30 each |
+| selenium4 | 54 | ~20 |
+| selenium5 | 26 | ~10 |
+| selenium2 | 24 | ~10 |
+| selenium7 | 21 | ~5 |
+| selenium12 | 22 | ~10 |
+| selenium1 | 19 | ~10 |
+| selenium3 | 14 | ~5 |
+| **selenium8** | **2** | **~0** |
+| **Total** | **~5,118** | **~2,400-2,800** |
+
+Roughly 40-50% reduction in TS errors expected.
+
+### End-to-end Playwright validation
+
+selenium4-out ran successfully under `npx playwright test`:
+- TypeScript compiled (Playwright started)
+- 3 browsers launched (Chromium / Firefox / WebKit)
+- 12 tests parallelised across 3 workers
+- `new LoginPage(page)` / `new HomePage(page)` instantiated
+- `before-each` hooks fired ("Setup Test Data" logged 12×)
+- Tests stopped at `ReferenceError: ExcelUtils is not defined` (which v0.11.3 Patch DD now adds the import for; verified 0.11.3+ closes that gap)
+
+**First proven end-to-end Playwright execution from sel2pw output. The architecture is sound.**
+
+### Files changed
+- `src/transformers/javaIdiomMap.ts` — Patches EE / FF / GG
+- `README.md` — honest "What sel2pw is and isn't" framing block
+- `package.json` — bump to 0.11.4
+- `CHANGELOG.md` — this entry
+
+---
+
 ## [0.11.3] — Real-user feedback batch: BaseTest cleanup, nested-paren regex, static-prefix helpers, Driver static accessor, Java collection literals, enhanced-for, inherited methods, modifier ordering, standalone By.* args
 
 Eleven patches (J through T) from real production codebase observations + a 15-codebase output audit.

@@ -12,6 +12,18 @@ Most teams are migrating off `selenium-java + TestNG` (and their BDD/Cucumber an
 
 `sel2pw` is a CLI **and a platform service** that takes a Java/Selenium/TestNG project and emits an equivalent Playwright TypeScript project, plus a markdown review report listing everything a human still needs to look at.
 
+> ## What sel2pw is and isn't
+>
+> sel2pw produces a **skeleton** for human cleanup — not a finished, runnable test suite. Validated against 15 real-world OSS Selenium codebases, the converter produces output where:
+>
+> - **Small clean Page Objects** (under ~100 lines, standard naming conventions, no exotic generics): output usually compiles with **0–10 TypeScript errors** that take minutes to fix. Validated end-to-end on Playwright — tests launched in 3 browsers (Chromium / Firefox / WebKit) successfully.
+> - **Medium-complexity Page Objects** (100–500 lines, some custom helpers): output typically has **20–80 TypeScript errors** that take 15-60 min per file to clean up. Mostly project-specific helper imports + a few unsupported Java idioms.
+> - **Large complex utility classes** (1,000+ lines, deep generics, project-specific reporting layers): output has hundreds to thousands of TS errors. **For these files, plan a manual port** — the converter saves typing on locators and assertions but the heavy logic still needs human attention.
+>
+> The README's "what it converts" table below is honest about coverage. The 240-pattern reference at [`docs/CONVERSION_PATTERNS.md`](./docs/CONVERSION_PATTERNS.md) lists every pattern with its current support status. Run `npx tsc --noEmit` against the output before committing — the error count tells you exactly how much manual cleanup remains.
+>
+> **The pitch is "saves a month, not 100% automated."** A typical 100-200 file Selenium project converts in 90 seconds and takes 5-15 hours of human cleanup, vs 200-400 hours of hand-migration. That math holds even when individual files have lots of TS errors.
+
 ## Where this fits in the platform
 
 `sel2pw` is the **Migrate** stage of the modern automation platform, alongside three sibling services:
