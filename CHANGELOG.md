@@ -4,6 +4,55 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [1.0.0] — Stable. First stable release.
+
+After ~10 days of public availability and 1,000+ downloads, sel2pw moves to 1.0.
+
+This is a **stability promise**, not a "now perfect" claim. The README's "What sel2pw is and isn't" disclaimer (added in 0.11.4) sets expectations correctly: sel2pw produces a Playwright TypeScript skeleton that needs human cleanup. **The promise of 1.0 is that the public API — CLI flags, programmatic exports, conversion-result.json schema — won't break in any 1.x release.**
+
+Breaking changes wait for 2.0. Bug fixes and additive features ship continuously throughout 1.x.
+
+### What 1.0 ships
+
+The 0.10.x → 0.11.x journey is the substance of 1.0:
+
+- **Validated against 15 real-world OSS Selenium codebases** (409 Java files / 0 conversion failures across the matrix).
+- **End-to-end Playwright execution proven** on selenium4 — converted output successfully launches Chromium, Firefox, and WebKit; runs 12 tests in parallel; Page Objects + before-each hooks + fixtures all wire correctly.
+- **Multi-stack input support** — Selenium Java + TestNG/JUnit/Cucumber, Selenium C# + NUnit/SpecFlow (regex-based; full AST in v2.2).
+- **Two BDD output modes** — `--bdd-mode preserve` (default; keep `.feature` files via `playwright-bdd`) or `--bdd-mode flatten` (drop Gherkin entirely; one Playwright `test()` per Scenario, Examples externalised to JSON).
+- **240-pattern conversion reference** at `docs/CONVERSION_PATTERNS.md` documenting every Selenium pattern's support status.
+- **3,500-word migration playbook** at `docs/migration-playbook.md` for cross-posting to Medium / dev.to / LinkedIn.
+- **VS Code extension scaffold** at `vscode-extension/` (one `vsce publish` away from the marketplace).
+- **ESLint + tsc validation gates** post-conversion via `--validate-eslint` / `--validate`.
+- **LLM fallback** for unclassifiable files via `--llm-fallback` (Anthropic / OpenAI / Gemini, with `ai-governance` sanitisation enforced).
+- **SQLite failure telemetry** with admin endpoints + CLI report subcommands so recurring patterns become one-line patches.
+- **Standalone .exe distribution** built via `@yao-pkg/pkg`, distributed through the platform downloads endpoint.
+- **HTTP service** on port 4200, reachable through the modern-automation-platform gateway at `/api/v1/converter/*`.
+
+### What's explicitly NOT promised in 1.x
+
+- **Output that compiles cleanly out of the box.** sel2pw produces a skeleton; expect 0-100 TypeScript errors per file depending on size + complexity. The auto-fix loop that closes this gap ships in 2.0.
+- **Any single repo will convert with zero human cleanup.** Even selenium4 (the cleanest validated case) needs 1-3 stub migrations before tests pass against a real app.
+- **Output for inputs that aren't Selenium Java/C# + TestNG/JUnit/Cucumber/NUnit/SpecFlow.** Other languages and frameworks remain out of scope.
+
+### What 1.x will ship
+
+Continuous patches for real-user-reported issues. New mappings as new Selenium patterns surface in user codebases. Better error reporting + review prose. Test coverage improvements. **Nothing breaking until 2.0.**
+
+### What 2.0 will ship
+
+See `docs/ROADMAP_V2.md` for the full roadmap. Headline feature: an iterative auto-fix loop pairing the rule-based AST converter with an LLM-driven cleanup pass and a Playwright runner in a feedback loop. Predicted impact: 100-file project cleanup time drops from 5-15 hours to 30-60 minutes.
+
+### Acknowledgements
+
+Validated against `naveenanimation20`, `cgjangid`, `AlfredStenwin`, `vibssingh`, `swtestacademy`, `aeshamangukiya`, `Infosys`, `yadsandy`, `cucumber-jdbc-ui-db-test-lab`, `cucumber-jdbc-ui-db-learning-path`, `mersys-ui-db-test-framework`, `hybrid-qa-automation-framework`, `anhtester/AutomationFrameworkSelenium`, `anhtester/AutomationFrameworkCucumberTestNG`, and `Selenium_TestNG_Amazon`. Their public Selenium frameworks were the test bench every 1.x patch fired against. Thank you.
+
+### Files changed
+- `package.json` — bump to 1.0.0
+- `CHANGELOG.md` — this entry
+
+---
+
 ## [0.11.4] — `tsc --noEmit` reality check: Java type declarations + multi-arg generics + inner method strip + honest README
 
 After 0.11.3 shipped, ran `tsc --noEmit` against all 15 converted output projects. The pattern-based audit script had been undercounting by ~40× (128 audit issues vs 5,118 actual TypeScript compile errors). 0.11.4 closes the gap with three targeted patches plus an honest README reframe.
