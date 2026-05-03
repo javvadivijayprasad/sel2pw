@@ -79,15 +79,31 @@ export async function runTsc(
 
   let rawOutput = "";
   try {
+    // shell: true is required on Windows so `npx` resolves to `npx.cmd`.
+    // Without it, execFile fails with ENOENT before tsc even runs and the
+    // structured-error parser sees empty output (false-clean result).
     const { stdout, stderr } = await execFileP(tsBin, args, {
       cwd: projectDir,
       maxBuffer: 50 * 1024 * 1024,
+      shell: true,
     });
     rawOutput = stdout + stderr;
   } catch (err) {
     // tsc returns non-zero when there are errors — that's the normal path.
     const e = err as { stdout?: Buffer | string; stderr?: Buffer | string };
     rawOutput = (e.stdout?.toString() ?? "") + (e.stderr?.toString() ?? "");
+  }
+
+  // If output is empty AND no errors parsed, the invocation likely failed
+  // before tsc ran (missing tsc binary, bad cwd, etc). Surface this as a
+  // diagnostic rather than reporting "clean".
+  if (rawOutput.trim() === "") {
+    return {
+      ok: false,
+      errorCount: -1,
+      errors: [],
+      rawOutput: "[tscRunner] empty output - tsc binary not found or invocation failed. Check that node_modules/typescript is installed in projectDir.",
+    };
   }
 
   const errors = await parseTscOutput(rawOutput, projectDir, maxErrors);
