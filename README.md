@@ -1,5 +1,9 @@
 # sel2pw — Selenium Java/TestNG → Playwright TypeScript converter
 
+[![npm version](https://img.shields.io/npm/v/@vijaypjavvadi/sel2pw.svg)](https://www.npmjs.com/package/@vijaypjavvadi/sel2pw)
+[![npm downloads](https://img.shields.io/npm/dm/@vijaypjavvadi/sel2pw.svg)](https://www.npmjs.com/package/@vijaypjavvadi/sel2pw)
+[![license](https://img.shields.io/npm/l/@vijaypjavvadi/sel2pw.svg)](https://www.npmjs.com/package/@vijaypjavvadi/sel2pw)
+
 [![npm version](https://img.shields.io/npm/v/@vijaypjavvadi/sel2pw.svg?logo=npm&color=cb3837)](https://www.npmjs.com/package/@vijaypjavvadi/sel2pw)
 [![npm downloads](https://img.shields.io/npm/dm/@vijaypjavvadi/sel2pw.svg?logo=npm)](https://www.npmjs.com/package/@vijaypjavvadi/sel2pw)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
