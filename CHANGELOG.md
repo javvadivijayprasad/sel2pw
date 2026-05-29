@@ -4,6 +4,38 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [1.0.1] — Infrastructure for v2.0
+
+A maintenance release that lands the foundation pieces for the v2.0 auto-fix loop and the second-round validation matrix without touching any 1.0 public-API promise. All changes are additive or developer-facing — CLI flags, programmatic exports, `conversion-result.json` schema, and HTTP service endpoints are unchanged from 1.0.0.
+
+### Added
+
+- **`src/autofix/tscRunner.ts`** — v2.0 spike foundation. Runs `tsc --noEmit --pretty false` against a converted Playwright project, parses every diagnostic into a structured `TscError` with three-line code context, and surfaces both a `TscRunResult` and a `summariseTscRun()` shape (top files, top error codes). First component of the iterative auto-fix loop described in `docs/ROADMAP_V2.md` Theme 1; usable standalone today as a diagnostic. Includes Windows `shell: true` for `npx.cmd` resolution and a `-1` sentinel when invocation fails before tsc runs.
+- **`src/autofix/README.md`** — status doc for the v2.0 spike. Lists the seven components of the auto-fix loop with current status per component.
+- **`scripts/clone-validation-batch-v2.js`** — second-round validation matrix. Clones 13 real-world Selenium/TestNG frameworks across 5 tiers (Database+JDBC, UI+API hybrid, Production-grade, Mobile/cross-platform, BDD-heavy), converts each with sel2pw, runs tsc, and writes `examples/validation-batch-v2/batch-v2-baseline.json` plus a human-readable `batch-v2-summary.md`. Designed to become a CI regression gate so future patches can't silently undo the 33 patches landed across 0.10.4 → 0.11.4. Supports `--list`, `--full`, `--skip-clone`, and `--only=<slug1,slug2>`.
+- **`validate:batch-v2` / `validate:batch-v2:full`** npm scripts — convenience wrappers.
+- **VS Code extension publishing scaffolding** — `vscode-extension/LICENSE` (MIT, mirrors root) and a committed `vscode-extension/package-lock.json` for reproducible `vsce package` builds. The extension is now packageable and uploadable to the Visual Studio Marketplace at <https://marketplace.visualstudio.com/manage/publishers/vijaypjavvadi>.
+
+### Documentation
+
+- **`CITATION.cff`** — project is now formally citeable via Zenodo DOI [`10.5281/zenodo.20450292`](https://doi.org/10.5281/zenodo.20450292). GitHub renders a "Cite this repository" button on the repo page that exports BibTeX / APA / Chicago formats; npm consumers see the Zenodo badge on the README. Useful for academic users, research portfolios, and anyone referencing sel2pw in papers or talks.
+- **README** — added Zenodo DOI badge, a "Citing this project" section, and npm version + MIT license shields. Header now mirrors the standard OSS metadata block (version · license · downloads · DOI).
+
+### Changed
+
+- **`vscode-extension/package.json`** — removed the `icon` and `galleryBanner` fields. The icon reference pointed to a file that did not exist, causing `vsce package` to fail. Both fields will be re-added once a proper icon asset exists.
+- **`.gitignore`** — added `examples/validation-batch-v2/sources/` and `examples/validation-batch-v2/outputs/` so cloned source repos and converted outputs don't pollute git. The baseline JSON and summary markdown remain tracked so CI can diff against them.
+
+### Validated
+
+`npm run build` produces a clean `dist/`, including `dist/autofix/tscRunner.js`. Existing test suite passes unchanged. The 15-codebase v1 validation matrix is unaffected. The new 13-repo batch-v2 matrix runs separately via `npm run validate:batch-v2`; its baseline + any patches it surfaces land in a follow-up release.
+
+### Not breaking
+
+Semver patch (1.0.0 → 1.0.1). Public API is unchanged. The 1.x stability promise holds.
+
+---
+
 ## [1.0.0] — Stable. First stable release.
 
 After ~10 days of public availability and 1,000+ downloads, sel2pw moves to 1.0.
