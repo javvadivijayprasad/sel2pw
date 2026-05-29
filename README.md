@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20450292.svg)](https://doi.org/10.5281/zenodo.20450292)
+
 # @vijaypjavvadi/sel2pw
 
 > Selenium Java/TestNG → Playwright TypeScript converter
@@ -194,6 +196,13 @@ npm install
 npm run dev -- convert ./examples/selenium-testng-sample --out ./examples/output-playwright
 npm test
 ```
+## Citation
+
+If you use `@vijaypjavvadi/sel2pw` in academic work, please cite:
+
+> Javvadi, V. P. (2026). *@vijaypjavvadi/sel2pw: A Deterministic, AST-Based Migration Toolkit from Selenium Test Suites to Playwright TypeScript* (Version 1.0.1) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.20450292
+
+A machine-readable [`CITATION.cff`](CITATION.cff) file is included in the repository root.
 
 ## License
 
