@@ -7,6 +7,8 @@ dist-exe/
 .vscode/
 coverage/
 examples/output-playwright/
+examples/validation-batch-v2/sources/
+examples/validation-batch-v2/outputs/
 *.tsbuildinfo
 
 # Local runtime state

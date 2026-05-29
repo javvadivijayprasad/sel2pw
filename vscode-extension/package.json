@@ -30,11 +30,6 @@
   "bugs": {
     "url": "https://github.com/javvadivijayprasad/sel2pw/issues"
   },
-  "icon": "icon.png",
-  "galleryBanner": {
-    "color": "#1e293b",
-    "theme": "dark"
-  },
   "activationEvents": [
     "onCommand:sel2pw.convertFolder",
     "onCommand:sel2pw.analyzeFolder",
