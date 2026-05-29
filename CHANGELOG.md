@@ -4,6 +4,23 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [1.0.2] — Documentation patch
+
+Re-release of the 1.0.1 work with a corrected CHANGELOG. The 1.0.1 push tangled with a rebase + amend cycle and shipped to npm without the Documentation section that credited the academic citation work that landed alongside it. v1.0.2 ships the same code surface as 1.0.1 with the CHANGELOG fully attributed.
+
+No code changes. No public API changes. Pure docs patch.
+
+### Documentation
+
+- **`CITATION.cff`** — project is now formally citeable via Zenodo DOI [`10.5281/zenodo.20450292`](https://doi.org/10.5281/zenodo.20450292). GitHub renders a "Cite this repository" button on the repo page that exports BibTeX / APA / Chicago formats; npm consumers see the Zenodo badge on the README. Useful for academic users, research portfolios, and anyone referencing sel2pw in papers or talks.
+- **README** — Zenodo DOI badge, "Citing this project" section, npm version + MIT license shields. Header now mirrors the standard OSS metadata block (version · license · downloads · DOI).
+
+### Note on 1.0.1
+
+1.0.1 on npm is functionally identical to 1.0.2. Users who installed 1.0.1 do not need to upgrade for any behavioral reason — 1.0.2 only corrects the CHANGELOG attribution. Users installing fresh should prefer 1.0.2 for the cleaner release notes.
+
+---
+
 ## [1.0.1] — Infrastructure for v2.0
 
 A maintenance release that lands the foundation pieces for the v2.0 auto-fix loop and the second-round validation matrix without touching any 1.0 public-API promise. All changes are additive or developer-facing — CLI flags, programmatic exports, `conversion-result.json` schema, and HTTP service endpoints are unchanged from 1.0.0.
