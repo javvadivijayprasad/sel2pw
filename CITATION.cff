@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "@vijaypjavvadi/sel2pw: A Deterministic, AST-Based Migration Toolkit from Selenium Test Suites to Playwright TypeScript"
+authors:
+  - family-names: Javvadi
+    given-names: Vijay Prasad
+    orcid: "https://orcid.org/0009-0004-1192-6906"
+    affiliation: "Independent Researcher, Plainsboro, NJ, USA"
+version: 1.0.1
+doi: 10.5281/zenodo.20450292
+date-released: 2026-05-29
+url: "https://github.com/javvadivijayprasad/sel2pw"
+repository-code: "https://github.com/javvadivijayprasad/sel2pw"
+repository-artifact: "https://www.npmjs.com/package/@vijaypjavvadi/sel2pw"
+license: MIT
+keywords:
+  - test automation
+  - Selenium
+  - Playwright
+  - Abstract Syntax Tree
+  - software migration
+  - software testing
+  - TypeScript
+  - Java
+  - C-Sharp
+  - npm
+abstract: >-
+  sel2pw is an open-source Node.js package that performs deterministic,
+  AST-based migration of legacy Selenium test suites (Java + TestNG/JUnit/Cucumber
+  and C# + NUnit/SpecFlow) to compiling Playwright TypeScript. Validated against
+  15 real-world OSS Selenium repositories totalling 409 Java source files with
+  zero failed conversions: 150 cleanly converted, 152 stubbed with migration
+  recipes, 11 honestly skipped (POJO-shaped). Produces CONVERSION_REVIEW.md
+  (line-level punch list) and MIGRATION_NOTES.md (project-wide guidance).
