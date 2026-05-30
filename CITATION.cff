@@ -7,7 +7,7 @@ authors:
     given-names: Vijay Prasad
     orcid: "https://orcid.org/0009-0004-1192-6906"
     affiliation: "Independent Researcher, Plainsboro, NJ, USA"
-version: 1.0.1
+version: v1.0.5
 doi: 10.5281/zenodo.20450292
 date-released: 2026-05-29
 url: "https://github.com/javvadivijayprasad/sel2pw"
