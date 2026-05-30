@@ -4,6 +4,23 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [1.0.3] — Release pipeline fix
+
+Unblocks the npm release workflow. Starting with v1.0.1, every tag push triggered `release.yml` but failed at the `npm ci` step in ~30 seconds because `package-lock.json` still referenced `"version": "1.0.0"` while `package.json` had been bumped past it. `npm ci` is strict — it refuses to install when `package.json` and `package-lock.json` disagree. Result: v1.0.1 and v1.0.2 were tagged on GitHub but never made it to npm; the registry stayed pinned to v1.0.0.
+
+v1.0.3 syncs the lock file (`npm install --package-lock-only`) so the workflow makes it past `npm ci`. Same code surface as v1.0.1/1.0.2 — no behavioural change, no public API change, just the lock metadata update plus this changelog entry.
+
+### Fixed
+
+- **`package-lock.json`** — re-synced to match `package.json` version. Was stuck at `"1.0.0"` since v1.0.1 was cut.
+- **`release.yml` pipeline** — green again. v1.0.3 should be the first version after v1.0.0 to actually appear on the npm registry.
+
+### Note for users
+
+`npm install @vijaypjavvadi/sel2pw@latest` will now pull v1.0.3, which is the version represented by the v1.0.1 + v1.0.2 + v1.0.3 line of work. There is no functional gap — v1.0.1 and v1.0.2 are simply unpublished aliases of the same code.
+
+---
+
 ## [1.0.2] — Documentation patch
 
 Re-release of the 1.0.1 work with a corrected CHANGELOG. The 1.0.1 push tangled with a rebase + amend cycle and shipped to npm without the Documentation section that credited the academic citation work that landed alongside it. v1.0.2 ships the same code surface as 1.0.1 with the CHANGELOG fully attributed.
