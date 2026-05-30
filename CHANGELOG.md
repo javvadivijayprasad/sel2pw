@@ -4,6 +4,26 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [1.0.5] — Release pipeline, take three
+
+v1.0.4 swapped `npm ci` for `npm install` in `release.yml`, expecting that to install platform-specific binaries the lock didn't record. It didn't help — npm install still respects an existing lock file and skips optional deps that aren't recorded in it. The Linux runner kept crashing on `npm test` with `Cannot find module '@rollup/rollup-linux-x64-gnu'`.
+
+v1.0.5 takes npm's own error-message advice: **`rm -f package-lock.json` before `npm install`** in the release workflow. With no lock present, `npm install` does a fresh resolution from `package.json` and installs everything the current runner platform needs — including the missing rollup binary.
+
+Trade-off: release builds no longer use lockfile-strict dependency resolution. We accept that for the release pipeline only; the matrix `ci.yml` workflow still uses `npm ci` because it runs on Windows + macOS + Linux and would surface any cross-platform issue before code reaches the release path.
+
+No package code changes. Tarball contents identical to v1.0.3 / v1.0.4.
+
+### Fixed
+
+- **`.github/workflows/release.yml`** — added `rm -f package-lock.json` step before `npm install --no-audit --no-fund`. Per [npm/cli#4828](https://github.com/npm/cli/issues/4828) this is the only reliable way to get all current-platform optional binaries installed when the lock was generated on a different platform.
+
+### Note for users
+
+`@vijaypjavvadi/sel2pw@1.0.5` should be the first version after v1.0.0 to actually publish to the npm registry. v1.0.1 through v1.0.4 are GitHub tags only — all reflect the same code, blocked by progressively narrower CI pipeline issues. If you installed v1.0.0 you have functionally equivalent behavior; upgrading to v1.0.5 only matters if you want the latest changelog metadata.
+
+---
+
 ## [1.0.4] — Release pipeline actually works now
 
 v1.0.3 fixed the `package-lock.json` version mismatch but its release workflow still failed because `npm ci` is strict-mode: it refuses to install optional platform-specific binaries (`@rollup/rollup-linux-x64-gnu`, etc.) that aren't recorded in the lock. Our lock was generated on Windows and only records the win32 rollup variants, so on the Linux CI runner `npm test` crashed inside vitest with `Cannot find module '@rollup/rollup-linux-x64-gnu'`.

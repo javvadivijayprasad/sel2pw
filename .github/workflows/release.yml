@@ -19,12 +19,17 @@ jobs:
           node-version: 20
           cache: npm
           registry-url: https://registry.npmjs.org
-      # `npm install` rather than `npm ci` so that optional platform-specific
-      # native binaries (rollup-linux-x64-gnu, etc.) are installed even when
-      # they aren't recorded in package-lock.json. The lock was generated on
-      # Windows so only win32 rollup binaries are listed; strict `npm ci`
-      # would skip the Linux ones and `npm test` (vitest -> rollup) would
-      # crash with MODULE_NOT_FOUND. See https://github.com/npm/cli/issues/4828
+      # Delete package-lock.json before install. The lock was generated on
+      # Windows and only records win32 platform binaries (rollup-win32-x64-*),
+      # so on the Linux runner npm respects the lock and skips installing
+      # the Linux-specific @rollup/rollup-linux-x64-gnu — then vitest
+      # (which uses rollup internally) crashes with MODULE_NOT_FOUND.
+      # npm's own error message recommends `rm package-lock.json && npm i`.
+      # Trade-off: release pipeline loses lockfile-strict resolution. The
+      # matrix `ci.yml` workflow keeps `npm ci` because it tests across
+      # Win/macOS/Linux and any cross-platform issue would surface there.
+      # See https://github.com/npm/cli/issues/4828
+      - run: rm -f package-lock.json
       - run: npm install --no-audit --no-fund
       - run: npm run lint
       - run: npm run build
