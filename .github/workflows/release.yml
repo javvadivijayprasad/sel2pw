@@ -19,7 +19,13 @@ jobs:
           node-version: 20
           cache: npm
           registry-url: https://registry.npmjs.org
-      - run: npm ci
+      # `npm install` rather than `npm ci` so that optional platform-specific
+      # native binaries (rollup-linux-x64-gnu, etc.) are installed even when
+      # they aren't recorded in package-lock.json. The lock was generated on
+      # Windows so only win32 rollup binaries are listed; strict `npm ci`
+      # would skip the Linux ones and `npm test` (vitest -> rollup) would
+      # crash with MODULE_NOT_FOUND. See https://github.com/npm/cli/issues/4828
+      - run: npm install --no-audit --no-fund
       - run: npm run lint
       - run: npm run build
       - run: npm test

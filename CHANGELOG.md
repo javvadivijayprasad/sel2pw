@@ -4,6 +4,24 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [1.0.4] — Release pipeline actually works now
+
+v1.0.3 fixed the `package-lock.json` version mismatch but its release workflow still failed because `npm ci` is strict-mode: it refuses to install optional platform-specific binaries (`@rollup/rollup-linux-x64-gnu`, etc.) that aren't recorded in the lock. Our lock was generated on Windows and only records the win32 rollup variants, so on the Linux CI runner `npm test` crashed inside vitest with `Cannot find module '@rollup/rollup-linux-x64-gnu'`.
+
+v1.0.4 swaps `npm ci` for `npm install --no-audit --no-fund` in `.github/workflows/release.yml`. `npm install` is permissive about optional deps and pulls down whatever the current platform needs, even if those entries aren't in the lock. The trade-off is slightly looser lockfile reproducibility for the release pipeline; we keep `npm ci` in `ci.yml` (the matrix CI workflow) because that runs across Windows + macOS + Linux and only needs the union to work overall.
+
+Pure CI fix. No package code changes; no API changes. The npm tarball contents are identical to v1.0.3.
+
+### Fixed
+
+- **`.github/workflows/release.yml`** — `npm ci` → `npm install --no-audit --no-fund`. See [npm/cli#4828](https://github.com/npm/cli/issues/4828) for the underlying npm bug where lock files don't record optional platform binaries cross-platform.
+
+### Note for users
+
+`@vijaypjavvadi/sel2pw@1.0.4` should be the first version after v1.0.0 to actually appear on the npm registry. v1.0.1, v1.0.2, and v1.0.3 are GitHub tags only — all three reflect the same code, just blocked by progressively deeper pipeline issues.
+
+---
+
 ## [1.0.3] — Release pipeline fix
 
 Unblocks the npm release workflow. Starting with v1.0.1, every tag push triggered `release.yml` but failed at the `npm ci` step in ~30 seconds because `package-lock.json` still referenced `"version": "1.0.0"` while `package.json` had been bumped past it. `npm ci` is strict — it refuses to install when `package.json` and `package-lock.json` disagree. Result: v1.0.1 and v1.0.2 were tagged on GitHub but never made it to npm; the registry stayed pinned to v1.0.0.
