@@ -11,6 +11,7 @@ import {
   TestNgLifecycle,
 } from "../types";
 import { logger } from "../utils/logger";
+import { splitTopLevel } from "../utils/paramSplit";
 import {
   extractPageObject as extractPageObjectLegacy,
   extractTestClass as extractTestClassLegacy,
@@ -369,7 +370,7 @@ function parseSignatureFromNode(md: CstNode): ParsedSignature | null {
   const name = sigRe[3];
   const paramsRaw = sigRe[4].trim();
   const params: ParamIR[] = paramsRaw
-    ? paramsRaw.split(",").map((p) => {
+    ? splitTopLevel(paramsRaw, ",").map((p) => {
         const parts = p.trim().split(/\s+/);
         return {
           name: parts[parts.length - 1],

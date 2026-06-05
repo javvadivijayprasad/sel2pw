@@ -11,6 +11,7 @@ import {
   TestNgLifecycle,
 } from "../types";
 import { findJavadocBeforeMethod } from "../transformers/commentPreserver";
+import { splitTopLevel } from "../utils/paramSplit";
 
 /**
  * Java extractor — turns raw Java source into a structural IR.
@@ -359,7 +360,7 @@ function readMethodSignature(
   const name = sigMatch[4];
   const paramsRaw = sigMatch[5].trim();
   const params: ParamIR[] = paramsRaw
-    ? paramsRaw.split(",").map((p) => {
+    ? splitTopLevel(paramsRaw, ",").map((p) => {
         const parts = p.trim().split(/\s+/);
         const pname = parts[parts.length - 1];
         const ptype = parts.slice(0, -1).join(" ").replace(/^final\s+/, "");
@@ -441,7 +442,7 @@ function extractMethods(source: string): PageMethodIR[] {
     if (name === source.match(/class\s+(\w+)/)?.[1]) continue; // skip ctor
     const paramsRaw = m[3].trim();
     const params: ParamIR[] = paramsRaw
-      ? paramsRaw.split(",").map((p) => {
+      ? splitTopLevel(paramsRaw, ",").map((p) => {
           const parts = p.trim().split(/\s+/);
           const pname = parts[parts.length - 1];
           const ptype = parts.slice(0, -1).join(" ").replace(/^final\s+/, "");

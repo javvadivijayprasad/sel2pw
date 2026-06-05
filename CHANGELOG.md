@@ -4,6 +4,57 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [1.0.6] — 83% TS error reduction across the validation matrix
+
+First 1.x release with a real product-quality improvement, not pipeline plumbing. Two parser bugs were generating thousands of cascading TypeScript syntax errors per converted project. Both fixed. Measured impact on the 13-repo `validation-batch-v2` matrix: **3,400 → 591 TS errors (-83%)**.
+
+### The numbers
+
+| Repo | Before | After | Reduction |
+| --- | ---: | ---: | ---: |
+| `bdd-anhtester` | 2,674 | **259** | -90% |
+| `anhtester-selenium` | 383 | **68** | -82% |
+| `ui-api-pavleciric` | 36 | **9** | -75% |
+| `ui-api-bookknight` | 12 | **4** | -67% |
+| `jdbc-learning` | 78 | **44** | -44% |
+| `jdbc-test-lab` | 154 | **115** | -25% |
+| 6 other repos | (unchanged — patterns not present) | | |
+| **Total matrix** | **~3,400** | **591** | **-83%** |
+
+### Fix 1: generic-aware parameter splitting
+
+Java method parameters with generic types like `Hashtable<String, String> data` were being split on every comma without respecting `<>` nesting:
+
+- **Before:** `addClient(Hashtable<String: unknown, data: String>): Promise<void>` ← unparseable
+- **After:**  `addClient(data: Hashtable<String, String>): Promise<void>` ← valid TS
+
+Every such method was generating ~150 cascading TS1005 errors as tsc tried to recover from the malformed signature. Cucumber's `DataTable` step-def pattern (`void step(Hashtable<String,String> data)`) is the canonical example, which is why BDD-heavy frameworks (`anhtester/AutomationFrameworkCucumberTestNG`) dropped 90% of their errors with this one patch.
+
+**Fix:** new `src/utils/paramSplit.ts` exports `splitTopLevel(str, sep)` that tracks `<>` `()` `[]` `{}` nesting and only splits on top-level separators. Wired into all five parser sites in `javaAst.ts`, `javaExtractor.ts`, and `csharpExtractor.ts`.
+
+### Fix 2: `static` modifier no longer leaks into return type
+
+Java `public static void method()` was emitting `async method(): Promise<static void>`. The `static` modifier was sneaking past the return-type extractor and getting glued onto the type. Every method in a utility class like Anh Tester's `WebUI.java` (which is entirely `public static` methods) produced this, and each emission cascaded 50+ errors through the function body.
+
+- **Before:** `async stopSoftAssertAll(): Promise<static void> { ... }` ← `static` is not a TS type
+- **After:**  `async stopSoftAssertAll(): Promise<void> { ... }` ← valid
+
+**Fix:** defensive Java-modifier strip at the top of `javaTypeToTs()` in `src/utils/naming.ts`. Catches `public|protected|private|static|final|synchronized|abstract|default|native|strictfp|transient|volatile` prefixes regardless of which emitter calls it. Single-line root-cause fix that lights up every emitter call path (`pageObjectEmitter`, `helperClassEmitter`, `testClassEmitter`).
+
+### What this means in practice
+
+The README's "What sel2pw is and isn't" section (added in 0.11.4) said: *"Expect 0-10 TS errors per small Page Object, 20-80 per medium, hundreds to thousands per large utility class."* That last category — the `web-ui.page.ts`-style central utility class — was the soul-crushing one. v1.0.6 cuts the worst cases from "thousands of errors" to "tens to low-hundreds." Migration cleanup time on a representative BDD framework drops from hours to minutes.
+
+### Validated against
+
+13-repo `validation-batch-v2` matrix spanning Database+JDBC (Cucumber), UI+API (RestAssured), Production-grade (ExtentReports + Allure + Jenkins), Mobile (Appium + SauceLabs), and BDD-heavy frameworks. Per-repo numbers committed to `examples/validation-batch-v2/batch-v2-baseline.json`.
+
+### Not breaking
+
+Public API unchanged. Same CLI flags, same `conversion-result.json` schema, same programmatic exports. The 1.x stability promise holds.
+
+---
+
 ## [1.0.5] — Release pipeline, take three
 
 v1.0.4 swapped `npm ci` for `npm install` in `release.yml`, expecting that to install platform-specific binaries the lock didn't record. It didn't help — npm install still respects an existing lock file and skips optional deps that aren't recorded in it. The Linux runner kept crashing on `npm test` with `Cannot find module '@rollup/rollup-linux-x64-gnu'`.

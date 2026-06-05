@@ -1,0 +1,461 @@
+{
+  "schema": "sel2pw-validation-batch-v2/1.0",
+  "mode": "fast",
+  "cliPath": "E:\\EB1A_Research\\Application\\Converter\\dist\\cli.js",
+  "cliVersion": "1.0.5",
+  "runStartedAt": "2026-06-05T00:56:32.935Z",
+  "runCompletedAt": "2026-06-05T00:57:02.948Z",
+  "totalRepos": 13,
+  "converted": 12,
+  "totalTsErrors": 591,
+  "errorsByTier": {
+    "1": 160,
+    "2": 24,
+    "3": 102,
+    "4": 46,
+    "5": 259
+  },
+  "errorsByCode": {
+    "TS1005": 270,
+    "TS1128": 182,
+    "TS1434": 87,
+    "TS1109": 28,
+    "TS1011": 8,
+    "TS1003": 5,
+    "TS1002": 2,
+    "TS1068": 2,
+    "TS1129": 2,
+    "TS1435": 1,
+    "TS2307": 1,
+    "TS1389": 1,
+    "TS1110": 1,
+    "TS1136": 1
+  },
+  "results": [
+    {
+      "slug": "jdbc-learning",
+      "tier": 1,
+      "kind": "DB+UI BDD",
+      "url": "https://github.com/cihat-kose/cucumber-jdbc-ui-db-learning-path.git",
+      "startedAt": "2026-06-05T00:56:32.935Z",
+      "cloneStatus": "cached",
+      "convertStatus": "ok",
+      "convertMs": 1002,
+      "tscOk": false,
+      "tscErrorCount": 44,
+      "tscByCode": {
+        "TS1434": 20,
+        "TS1005": 11,
+        "TS1128": 12,
+        "TS1011": 1
+      },
+      "tscTopFiles": [
+        {
+          "relPath": "tests/hooks.spec.ts",
+          "errorCount": 14
+        },
+        {
+          "relPath": "tests/jdbcparent.spec.ts",
+          "errorCount": 10
+        },
+        {
+          "relPath": "tests/-07-get-meta-data.spec.ts",
+          "errorCount": 7
+        },
+        {
+          "relPath": "pages/gwd.page.ts",
+          "errorCount": 3
+        },
+        {
+          "relPath": "tests/-01-intro.spec.ts",
+          "errorCount": 3
+        }
+      ],
+      "tscMs": 1665,
+      "completedAt": "2026-06-05T00:56:35.603Z"
+    },
+    {
+      "slug": "jdbc-test-lab",
+      "tier": 1,
+      "kind": "DB+UI BDD",
+      "url": "https://github.com/cihat-kose/cucumber-jdbc-ui-db-test-lab.git",
+      "startedAt": "2026-06-05T00:56:35.603Z",
+      "cloneStatus": "cached",
+      "convertStatus": "ok",
+      "convertMs": 1103,
+      "tscOk": false,
+      "tscErrorCount": 115,
+      "tscByCode": {
+        "TS1434": 16,
+        "TS1005": 59,
+        "TS1128": 34,
+        "TS1011": 1,
+        "TS1002": 2,
+        "TS1109": 2,
+        "TS1435": 1
+      },
+      "tscTopFiles": [
+        {
+          "relPath": "tests/jdbcfilm-category-summary.spec.ts",
+          "errorCount": 26
+        },
+        {
+          "relPath": "tests/jdbcsakila-task.spec.ts",
+          "errorCount": 23
+        },
+        {
+          "relPath": "tests/jdbcpractices02.spec.ts",
+          "errorCount": 18
+        },
+        {
+          "relPath": "tests/jdbcsakila-customer-add-and-verify-example.spec.ts",
+          "errorCount": 16
+        },
+        {
+          "relPath": "tests/hooks.spec.ts",
+          "errorCount": 11
+        }
+      ],
+      "tscMs": 1332,
+      "completedAt": "2026-06-05T00:56:38.039Z"
+    },
+    {
+      "slug": "jdbc-pure",
+      "tier": 1,
+      "kind": "DB inline",
+      "url": "https://github.com/kush1107/SeleniumDatabaseTesting_JDBC.git",
+      "startedAt": "2026-06-05T00:56:38.040Z",
+      "cloneStatus": "cached",
+      "convertStatus": "ok",
+      "convertMs": 326,
+      "tscOk": false,
+      "tscErrorCount": 1,
+      "tscByCode": {
+        "TS2307": 1
+      },
+      "tscTopFiles": [
+        {
+          "relPath": "playwright.config.ts",
+          "errorCount": 1
+        }
+      ],
+      "tscMs": 1434,
+      "completedAt": "2026-06-05T00:56:39.800Z"
+    },
+    {
+      "slug": "ui-api-pavleciric",
+      "tier": 2,
+      "kind": "UI+API BDD",
+      "url": "https://github.com/pavleciric89/UI-API-test-automation-framework.git",
+      "startedAt": "2026-06-05T00:56:39.801Z",
+      "cloneStatus": "cached",
+      "convertStatus": "ok",
+      "convertMs": 1047,
+      "tscOk": false,
+      "tscErrorCount": 9,
+      "tscByCode": {
+        "TS1005": 4,
+        "TS1128": 4,
+        "TS1434": 1
+      },
+      "tscTopFiles": [
+        {
+          "relPath": "pages/driver-factory.page.ts",
+          "errorCount": 3
+        },
+        {
+          "relPath": "pages/cart.page.ts",
+          "errorCount": 2
+        },
+        {
+          "relPath": "pages/inventory-main.page.ts",
+          "errorCount": 2
+        },
+        {
+          "relPath": "pages/login.page.ts",
+          "errorCount": 2
+        }
+      ],
+      "tscMs": 1677,
+      "completedAt": "2026-06-05T00:56:42.526Z"
+    },
+    {
+      "slug": "ui-api-bookknight",
+      "tier": 2,
+      "kind": "UI+API BDD",
+      "url": "https://github.com/TheBookKnight/java-selenium-cucumber-restassured.git",
+      "startedAt": "2026-06-05T00:56:42.526Z",
+      "cloneStatus": "cached",
+      "convertStatus": "ok",
+      "convertMs": 1033,
+      "tscOk": false,
+      "tscErrorCount": 4,
+      "tscByCode": {
+        "TS1005": 2,
+        "TS1128": 1,
+        "TS1003": 1
+      },
+      "tscTopFiles": [
+        {
+          "relPath": "pages/search-pof.page.ts",
+          "errorCount": 4
+        }
+      ],
+      "tscMs": 1227,
+      "completedAt": "2026-06-05T00:56:44.788Z"
+    },
+    {
+      "slug": "ui-api-chiranjeevi",
+      "tier": 2,
+      "kind": "UI+API BDD",
+      "url": "https://github.com/Chiranjeevi521/testng-cucumber-selenium-restassured.git",
+      "startedAt": "2026-06-05T00:56:44.788Z",
+      "cloneStatus": "cached",
+      "convertStatus": "ok",
+      "convertMs": 947,
+      "tscOk": false,
+      "tscErrorCount": 11,
+      "tscByCode": {
+        "TS1434": 2,
+        "TS1005": 2,
+        "TS1128": 7
+      },
+      "tscTopFiles": [
+        {
+          "relPath": "tests/cucumber-runner.spec.ts",
+          "errorCount": 11
+        }
+      ],
+      "tscMs": 1231,
+      "completedAt": "2026-06-05T00:56:46.967Z"
+    },
+    {
+      "slug": "master-selenium",
+      "tier": 3,
+      "kind": "Production",
+      "url": "https://github.com/rajatt95/MasterSeleniumFramework.git",
+      "startedAt": "2026-06-05T00:56:46.968Z",
+      "cloneStatus": "cached",
+      "convertStatus": "ok",
+      "convertMs": 1158,
+      "tscOk": false,
+      "tscErrorCount": 30,
+      "tscByCode": {
+        "TS1128": 18,
+        "TS1005": 7,
+        "TS1109": 1,
+        "TS1434": 4
+      },
+      "tscTopFiles": [
+        {
+          "relPath": "tests/add-to-cart.spec.ts",
+          "errorCount": 8
+        },
+        {
+          "relPath": "pages/checkout.page.ts",
+          "errorCount": 7
+        },
+        {
+          "relPath": "tests/login.spec.ts",
+          "errorCount": 4
+        },
+        {
+          "relPath": "tests/navigation.spec.ts",
+          "errorCount": 4
+        },
+        {
+          "relPath": "tests/search.spec.ts",
+          "errorCount": 3
+        }
+      ],
+      "tscMs": 1723,
+      "completedAt": "2026-06-05T00:56:49.849Z"
+    },
+    {
+      "slug": "anhtester-selenium",
+      "tier": 3,
+      "kind": "Production",
+      "url": "https://github.com/anhtester/AutomationFrameworkSelenium.git",
+      "startedAt": "2026-06-05T00:56:49.850Z",
+      "cloneStatus": "cached",
+      "convertStatus": "ok",
+      "convertMs": 1283,
+      "tscOk": false,
+      "tscErrorCount": 68,
+      "tscByCode": {
+        "TS1068": 1,
+        "TS1128": 20,
+        "TS1434": 13,
+        "TS1005": 31,
+        "TS1129": 1,
+        "TS1003": 1,
+        "TS1389": 1
+      },
+      "tscTopFiles": [
+        {
+          "relPath": "tests/helpers/capture.ts",
+          "errorCount": 27
+        },
+        {
+          "relPath": "pages/object-utils.page.ts",
+          "errorCount": 14
+        },
+        {
+          "relPath": "tests/test-handle.spec.ts",
+          "errorCount": 8
+        },
+        {
+          "relPath": "tests/test-simple-code.spec.ts",
+          "errorCount": 6
+        },
+        {
+          "relPath": "pages/order.page.ts",
+          "errorCount": 4
+        }
+      ],
+      "tscMs": 1330,
+      "completedAt": "2026-06-05T00:56:52.464Z"
+    },
+    {
+      "slug": "eliasnogueira-lean",
+      "tier": 3,
+      "kind": "TestContainers",
+      "url": "https://github.com/eliasnogueira/selenium-java-lean-test-architecture.git",
+      "startedAt": "2026-06-05T00:56:52.464Z",
+      "cloneStatus": "cached",
+      "convertStatus": "ok",
+      "convertMs": 963,
+      "tscOk": false,
+      "tscErrorCount": 4,
+      "tscByCode": {
+        "TS1109": 1,
+        "TS1005": 2,
+        "TS1128": 1
+      },
+      "tscTopFiles": [
+        {
+          "relPath": "tests/helpers/driver.ts",
+          "errorCount": 3
+        },
+        {
+          "relPath": "pages/detail.page.ts",
+          "errorCount": 1
+        }
+      ],
+      "tscMs": 1237,
+      "completedAt": "2026-06-05T00:56:54.665Z"
+    },
+    {
+      "slug": "appium-maciejd",
+      "tier": 4,
+      "kind": "Appium+Web+API",
+      "url": "https://github.com/maciejd/appium-selenium-testng-framework.git",
+      "startedAt": "2026-06-05T00:56:54.665Z",
+      "cloneStatus": "cached",
+      "convertStatus": "ok",
+      "convertMs": 949,
+      "tscOk": false,
+      "tscErrorCount": 2,
+      "tscByCode": {
+        "TS1434": 2
+      },
+      "tscTopFiles": [
+        {
+          "relPath": "pages/driver-factory.page.ts",
+          "errorCount": 2
+        }
+      ],
+      "tscMs": 1674,
+      "completedAt": "2026-06-05T00:56:57.288Z"
+    },
+    {
+      "slug": "appium-gauravkarvir",
+      "tier": 4,
+      "kind": "Appium+SauceLabs",
+      "url": "https://github.com/gauravkarvir/cucumber_testng_java.git",
+      "startedAt": "2026-06-05T00:56:57.288Z",
+      "cloneStatus": "cached",
+      "convertStatus": "ok",
+      "convertMs": 1117,
+      "tscOk": false,
+      "tscErrorCount": 44,
+      "tscByCode": {
+        "TS1005": 17,
+        "TS1109": 16,
+        "TS1128": 9,
+        "TS1011": 2
+      },
+      "tscTopFiles": [
+        {
+          "relPath": "pages/page-object.page.ts",
+          "errorCount": 27
+        },
+        {
+          "relPath": "pages/screenshot-hook.page.ts",
+          "errorCount": 13
+        },
+        {
+          "relPath": "pages/mobile-contacts.page.ts",
+          "errorCount": 4
+        }
+      ],
+      "tscMs": 1321,
+      "completedAt": "2026-06-05T00:56:59.726Z"
+    },
+    {
+      "slug": "bdd-nisvek",
+      "tier": 5,
+      "kind": "BDD",
+      "url": "https://github.com/NisVek-Automation/Selenium-Java-TestNG-BDD.git",
+      "startedAt": "2026-06-05T00:56:59.726Z",
+      "cloneStatus": "skipped-missing",
+      "convertStatus": "failed",
+      "convertMs": 300,
+      "convertError": "Conversion failed: Input directory does not exist: E:\\EB1A_Research\\Application\\Converter\\examples\\validation-batch-v2\\sources\\bdd-nisvek | "
+    },
+    {
+      "slug": "bdd-anhtester",
+      "tier": 5,
+      "kind": "BDD",
+      "url": "https://github.com/anhtester/AutomationFrameworkCucumberTestNG.git",
+      "startedAt": "2026-06-05T00:57:00.026Z",
+      "cloneStatus": "cached",
+      "convertStatus": "ok",
+      "convertMs": 1581,
+      "tscOk": false,
+      "tscErrorCount": 259,
+      "tscByCode": {
+        "TS1434": 29,
+        "TS1005": 135,
+        "TS1128": 76,
+        "TS1129": 1,
+        "TS1003": 3,
+        "TS1011": 4,
+        "TS1110": 1,
+        "TS1109": 8,
+        "TS1068": 1,
+        "TS1136": 1
+      },
+      "tscTopFiles": [
+        {
+          "relPath": "pages/web-ui.page.ts",
+          "errorCount": 236
+        },
+        {
+          "relPath": "pages/object-utils.page.ts",
+          "errorCount": 14
+        },
+        {
+          "relPath": "tests/hooks.spec.ts",
+          "errorCount": 5
+        },
+        {
+          "relPath": "pages/target-factory.page.ts",
+          "errorCount": 4
+        }
+      ],
+      "tscMs": 1338,
+      "completedAt": "2026-06-05T00:57:02.947Z"
+    }
+  ]
+}

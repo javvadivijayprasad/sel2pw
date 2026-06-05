@@ -56,7 +56,15 @@ export function packageToDir(packageName: string): string {
 
 /** Map a Java type name to a TS type name (best effort). */
 export function javaTypeToTs(javaType: string): string {
-  const t = javaType.trim();
+  // Defensive: strip Java method modifiers that sometimes leak in from
+  // signature-extractor regexes (e.g. `public static void foo()` parsed
+  // and `static` glued onto the return type). Without this, every
+  // `public static <T> T method()` emits `Promise<static T>` and cascades
+  // hundreds of TS1005 errors through the rest of the file.
+  let t = javaType
+    .trim()
+    .replace(/^(?:public|protected|private|static|final|synchronized|abstract|default|native|strictfp|transient|volatile)\s+/g, "")
+    .trim();
   if (!t) return "void";
   if (t === "void") return "void";
   if (t === "String") return "string";
