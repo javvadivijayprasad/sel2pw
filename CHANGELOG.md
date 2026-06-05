@@ -4,6 +4,30 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [1.0.7] — Lint fix to unblock the v1.0.6 publish
+
+v1.0.6 contained two real product improvements (paramSplit + static-modifier-leak fixes — 83% TS error reduction across the validation matrix) but the release workflow failed at `npm run lint`. ESLint's `prefer-const` rule fired on `let t = javaType.trim()...` in `src/utils/naming.ts` because `t` is never reassigned after its chained initializer.
+
+v1.0.7 swaps `let` → `const`. One-character fix. Same code semantics. Identical converter behaviour to v1.0.6.
+
+**This is the version with all the v1.0.6 product improvements that actually reaches npm.** v1.0.6 is a GitHub tag only — never published.
+
+### Fixed
+
+- **`src/utils/naming.ts`** — `let` → `const` for `t` in `javaTypeToTs`'s modifier-strip block. Unblocks the lint step in `release.yml`.
+
+### What v1.0.6 + v1.0.7 collectively ship (full story)
+
+- **Generic-aware parameter splitting** (`src/utils/paramSplit.ts` + 5 parser sites). `Hashtable<K, V> data` no longer mangles into `Hashtable<String: unknown, data: String>`.
+- **Java modifier strip in `javaTypeToTs`**. `public static void m()` no longer emits `Promise<static void>`.
+- **Validated against the 13-codebase `validation-batch-v2` matrix**: ~3,400 → 591 TS errors (-83%). Headline drops: `bdd-anhtester` 2,674 → 259 (-90%), `anhtester-selenium` 383 → 68 (-82%).
+
+### Not breaking
+
+Semver patch. Public API unchanged.
+
+---
+
 ## [1.0.6] — 83% TS error reduction across the validation matrix
 
 First 1.x release with a real product-quality improvement, not pipeline plumbing. Two parser bugs were generating thousands of cascading TypeScript syntax errors per converted project. Both fixed. Measured impact on the 13-repo `validation-batch-v2` matrix: **3,400 → 591 TS errors (-83%)**.
@@ -2493,41 +2517,4 @@ Each is a working scaffold ready for full implementation; the orchestration is i
 
 - **Cucumber BDD → playwright-bdd** (`src/stretch/bdd.ts`). Carries `.feature` files through verbatim; extracts `@Given/@When/@Then` step definitions from Java classes and emits them as `playwright-bdd` handlers. Generates a `playwright-bdd.config.ts`. Scenario outlines + DataTable params are roadmap items.
 - **Auto-fix loop** (`src/stretch/autoFix.ts`). `convert → run headless → capture failures → diagnose → patch → re-run`. The runner + failure parsing + patch-application machinery is fully implemented; the LLM-driven `patchFromFailure` callback is a typed extension point users wire up to Anthropic/OpenAI/local models.
-- **Hybrid AST + LLM engine** (`src/stretch/hybridLlm.ts` + `governanceClient.ts`). For the 20% of code shapes the AST can't translate, falls through to an LLM with the function source + already-converted files as in-context examples. Calls `ai-governance` sidecar's `/sanitize` endpoint before any prompt — governance is enforced in code, not by convention.
-- **Behaviour-parity verifier** (`src/stretch/parityVerifier.ts`). Runs both Selenium (`mvn test`) and Playwright (`playwright test --reporter=json`) against the same staging app, parses Surefire and Playwright reports, surfaces regressions (Selenium ✓ / Playwright ✗) vs likely fixes (Selenium ✗ / Playwright ✓). Writes `parity.json` + `parity.md`.
-- **C# / SpecFlow design** (`src/stretch/csharp/README.md`). Decision: a .NET sidecar at `services/csharp-parser/` exposes `POST /parse` returning the same IR shape. Same pattern as `ai-governance`'s sidecar. Implementation-ready spec.
-
-### Public API additions
-
-`ConvertOptions` gained: `emitSelfHealingShim`, `emitAuthSetup`, `formatOutput`, `validateOutput`, `emitTodoMarkers`. The CLI's `convert` subcommand has matching flags: `--emit-self-healing-shim`, `--emit-auth-setup`, `--format`, `--validate`, `--no-todo-markers`, `--diff`.
-
-### Dependencies
-
-Added: `java-parser` (AST parser), `pino` (logging), `pino-pretty` (optional dev pretty-print), `@vitest/coverage-v8`, `eslint`, `@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser`, `prettier`. All optional-or-dev — the converter still runs without them via the fallbacks documented above.
-
-### What was deliberately NOT auto-converted
-
-These intentionally remain manual-review items because we'd rather flag than mistranslate:
-
-- Multiple windows/tabs (`getWindowHandles` + `switchTo().window`) — semantics depend on the calling code's intent.
-- Custom WebDriver utility classes (`DriverFactory`, custom `Wait` helpers) — would need per-project rules.
-- Scenario outlines in Cucumber + DataTable parameters.
-- TestNG listeners (custom reporters need bespoke porting to Playwright reporter API).
-
-### Migration path from 0.2 → 0.5
-
-Strictly additive. The CLI's old flags still work; new flags are opt-in. The HTTP service contract is unchanged. No breaking changes.
-
----
-
-## [0.2.0] — Phase 0 (platform integration)
-
-(Previous Phase 0 entry kept verbatim — see git history.)
-
-The release that turned `sel2pw` from a standalone CLI into a platform-citizen service. HTTP service at `:4200`, gateway proxy at `/api/v1/converter/*`, ai-governance sidecar in the `ai-governance` repo, self-healing shim option, shared types, Docker, end-to-end smoke test.
-
----
-
-## [0.1.0] — 2026-04-25
-
-Initial MVP scaffold — Java + Selenium + TestNG → Playwright TypeScript conversion pipeline, CLI, sample project, regex-based extractor.
+- **Hybrid AST + LLM engine** (`src/stretch/hybridLlm.ts` + `governanceClient.ts`). For the 20% of code shapes the AST can't translate, falls through to an LLM with the function source + already-converted files as in-context examples. Calls `ai-governance` sidecar's `/sanitize` endpoint before any prompt — governance is enforc

@@ -61,7 +61,7 @@ export function javaTypeToTs(javaType: string): string {
   // and `static` glued onto the return type). Without this, every
   // `public static <T> T method()` emits `Promise<static T>` and cascades
   // hundreds of TS1005 errors through the rest of the file.
-  let t = javaType
+  const t = javaType
     .trim()
     .replace(/^(?:public|protected|private|static|final|synchronized|abstract|default|native|strictfp|transient|volatile)\s+/g, "")
     .trim();
