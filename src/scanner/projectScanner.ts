@@ -139,6 +139,34 @@ function classify(className: string, source: string): SourceKind {
     className !== "IWebDriver" &&
     className !== "By";
 
+  // ============================================================
+  // INFRASTRUCTURE detection (v1.0.8) — skip classes that only exist to
+  // manage Selenium driver lifecycle. Playwright handles this via fixtures.
+  // ============================================================
+  // Signals (any one is enough):
+  //   - Class name matches DriverManager/DriverFactory/BrowserFactory/WebDriverFactory
+  //   - Source uses ThreadLocal<WebDriver> (the canonical thread-local driver pattern)
+  //   - Source instantiates a concrete WebDriver (ChromeDriver/FirefoxDriver/etc.)
+  //     AND has no @Test method AND no @FindBy locator
+  //   - Class name matches *OptionsBuilder / CapabilitiesBuilder
+  // These files emit a note in CONVERSION_REVIEW.md but produce NO .ts output.
+  // Without this check they would emit broken bodies referencing `driver.get()`,
+  // `driver.set()`, `driver.remove()` that have no Playwright equivalent.
+  const isInfrastructureName =
+    /^(?:DriverManager|WebDriverManager|DriverFactory|WebDriverFactory|BrowserFactory|BrowserManager|DriverProvider|WebDriverProvider|BrowserProvider|SeleniumDriverManager|DriverInitializer|DriverConfiguration|BrowserConfiguration|DriverContext|WebDriverContext)$/.test(className);
+  const hasThreadLocalDriver =
+    /\bThreadLocal\s*<\s*(?:WebDriver|IWebDriver|RemoteWebDriver|EventFiringWebDriver|AppiumDriver)\b/.test(source);
+  const instantiatesConcreteDriver =
+    /\bnew\s+(?:ChromeDriver|FirefoxDriver|EdgeDriver|SafariDriver|InternetExplorerDriver|OperaDriver|RemoteWebDriver|AndroidDriver|IOSDriver|AppiumDriver)\s*\(/.test(source);
+  const isPureDriverSetup =
+    instantiatesConcreteDriver && !hasTestAnnotation && !hasFindBy;
+  const isOptionsBuilder =
+    /^(?:ChromeOptionsBuilder|FirefoxOptionsBuilder|EdgeOptionsBuilder|BrowserOptionsBuilder|CapabilitiesBuilder|DesiredCapabilitiesBuilder)$/.test(className);
+
+  if (isInfrastructureName || hasThreadLocalDriver || isPureDriverSetup || isOptionsBuilder) {
+    return "infrastructure";
+  }
+
   // Base classes: name pattern OR (lifecycle methods but no @Test)
   if (/^(BaseTest|TestBase|.*Base)$/.test(className) && !hasTestAnnotation) {
     return "base";

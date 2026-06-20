@@ -4,6 +4,49 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [1.0.8] — Selenium driver-lifecycle classes are now correctly skipped
+
+The biggest architectural shift since v1.0.0. **Selenium driver-lifecycle infrastructure** — `DriverManager`, `BrowserFactory`, `ThreadLocal<WebDriver>` wrappers, `ChromeOptions` builders — has **no Playwright equivalent**. Playwright provides driver/browser lifecycle through the `page` fixture: tests just do `async ({ page }) => { ... }` and the framework handles everything else.
+
+Previous versions tried to literally translate these classes line-by-line, producing broken `.ts` files like the infamous `tests/helpers/driver.ts` whose body referenced `driver.get()`, `driver.set()`, `driver.remove()` — none of which exist on Playwright's `Page` type.
+
+v1.0.8 **detects and skips** these classes entirely. Each skipped class gets a clear note in `CONVERSION_REVIEW.md` pointing the user at the Playwright-native pattern.
+
+### Headline measurement
+
+Validated against `eliasnogueira/selenium-java-lean-test-architecture` (a clean modern production framework with `DriverManager` + `BrowserFactory`):
+
+- v1.0.7 output: **4 TS errors** (all in the broken `driver.ts`)
+- v1.0.8 output: **0 TS errors** — fully compiling Playwright TypeScript project from a real OSS Selenium framework, no manual cleanup required
+
+### Added
+
+- **`"infrastructure"` SourceKind** in `src/types.ts`. New classification for files that exist purely to manage Selenium driver lifecycle.
+- **Infrastructure detection** in `src/scanner/projectScanner.ts` (fires before page-object / base / unknown branches). Signals:
+  - Class name matches `DriverManager`, `WebDriverManager`, `DriverFactory`, `WebDriverFactory`, `BrowserFactory`, `BrowserManager`, `DriverProvider`, `WebDriverProvider`, `BrowserProvider`, `SeleniumDriverManager`, `DriverInitializer`, `DriverConfiguration`, `BrowserConfiguration`, `DriverContext`, `WebDriverContext`
+  - Source uses `ThreadLocal<WebDriver>` / `ThreadLocal<IWebDriver>` / `ThreadLocal<RemoteWebDriver>` / `ThreadLocal<EventFiringWebDriver>` / `ThreadLocal<AppiumDriver>`
+  - Source instantiates `new ChromeDriver()` / `new FirefoxDriver()` / `new EdgeDriver()` / `new SafariDriver()` / `new InternetExplorerDriver()` / `new OperaDriver()` / `new RemoteWebDriver()` / `new AndroidDriver()` / `new IOSDriver()` / `new AppiumDriver()` AND has no `@Test` AND no `@FindBy`
+  - Class name matches `*OptionsBuilder` / `CapabilitiesBuilder` / `DesiredCapabilitiesBuilder`
+- **Skip handler** in `src/index.ts` that pushes an `info`-level review item explaining the substitution.
+
+### Changed
+
+- **`src/reports/conversionResult.ts`** — `sourceKind` union widened to include `"infrastructure"`.
+
+### What this means for users
+
+For frameworks whose Java codebase splits cleanly into Page Objects + Tests + a driver-lifecycle helper, `sel2pw convert` now produces **a Playwright project that compiles out of the box**. The "skeleton + cleanup" framing in the README is still honest for complex codebases with deep custom utilities, but the most common Selenium project shape — Page Objects, Tests, `DriverManager` — is now genuinely zero-cleanup.
+
+### Validated against
+
+`eliasnogueira/selenium-java-lean-test-architecture` (4 → 0 TS errors). Will re-run the full 13-codebase `validation-batch-v2` matrix and publish the new baseline in a follow-up; expected drops largest in `anhtester-selenium` and `bdd-anhtester` (both have explicit `DriverManager` analogs).
+
+### Not breaking
+
+Semver patch (1.0.7 → 1.0.8). Public API unchanged. CLI flags unchanged. `conversion-result.json` schema unchanged for existing consumers (the new `"infrastructure"` value only appears when the relevant pattern is detected).
+
+---
+
 ## [1.0.7] — Lint fix to unblock the v1.0.6 publish
 
 v1.0.6 contained two real product improvements (paramSplit + static-modifier-leak fixes — 83% TS error reduction across the validation matrix) but the release workflow failed at `npm run lint`. ESLint's `prefer-const` rule fired on `let t = javaType.trim()...` in `src/utils/naming.ts` because `t` is never reassigned after its chained initializer.

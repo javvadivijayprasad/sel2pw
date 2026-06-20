@@ -85,6 +85,20 @@ export function applyJavaIdiomRewrites(
     /^([\t ]*)(?:final\s+)?([A-Z]\w+)(?:<[^>]*>)?(?:\[\])?\s+([a-z]\w*)\s*=\s*new\s+\2/gm,
     (m, indent: string, _type: string, name: string) => `${indent}const ${name} = new ${_type}`,
   );
+  // Patch HH (v1.0.8): widen the above to ANY RHS, not just `new ${type}`. Catches
+  // patterns like `Pattern pattern = Pattern.compile(x)`, `File source = ts.getScreenshotAs()`,
+  // `Target target = Target.valueOf(x)`. Restricted to PascalCase Type and lowercase
+  // var name to avoid false positives on existing TS code. Only fires at line start.
+  body = body.replace(
+    /^([\t ]*)(?:final\s+)?([A-Z]\w+)(?:<[^>]*>)?(?:\[\])?\s+([a-z]\w*)\s*=\s*/gm,
+    "$1const $3 = ",
+  );
+  // Patch HH companion: bare Java-typed declaration without initializer
+  // `WebDriver webdriver;` → `let webdriver;` (no init, so const wouldn't compile).
+  body = body.replace(
+    /^([\t ]*)(?:final\s+)?([A-Z]\w+)(?:<[^>]*>)?(?:\[\])?\s+([a-z]\w*)\s*;\s*$/gm,
+    "$1let $3;",
+  );
 
   // ============================================================
   // -3) Chained <expr>.sendKeys / .getText / .clear (v0.11.3 Patch W)
@@ -703,10 +717,36 @@ export function applyJavaIdiomRewrites(
     /\bthrow\s+new\s+RuntimeException\s*\(\s*(\w+)\s*\)/g,
     "throw $1",
   );
-  // throw new IllegalArgumentException("msg") → throw new Error("msg")
+  // Patch KK (v1.0.8): widen throw-new-JavaException → throw new Error.
+  // Previously only IllegalArgumentException|IllegalStateException|RuntimeException.
+  // Java code throws `throw new Exception("msg")` everywhere; TS has no Exception class.
   body = body.replace(
-    /\bthrow\s+new\s+(?:IllegalArgumentException|IllegalStateException|RuntimeException)\s*\(\s*([^)]*)\)/g,
-    "throw new Error($1)",
+    /\bthrow\s+new\s+(?:Exception|RuntimeException|IllegalStateException|IllegalArgumentException|NullPointerException|IndexOutOfBoundsException|UnsupportedOperationException|NoSuchElementException|TimeoutException|NoSuchSessionException|StaleElementReferenceException|InvalidArgumentException|InvalidElementStateException|ElementNotInteractableException|ElementClickInterceptedException|WebDriverException|IOException|FileNotFoundException|InterruptedException)\s*\(/g,
+    "throw new Error(",
+  );
+
+  // ============================================================
+  // Patch II (v1.0.8) — convert Java cast `(Type) expr` → `expr as Type`.
+  // ============================================================
+  // Java casts like `TakesScreenshot ts = (TakesScreenshot) this.page;`
+  // aren\'t TS syntax. Convert to `as` cast. Restricted to PascalCase
+  // single-word types so we don\'t touch valid TS like `(value).foo`.
+  // Skips primitive-looking lowercase casts so `(int) x` isn\'t touched
+  // (though those would have been mapped earlier anyway).
+  body = body.replace(
+    /\(([A-Z]\w+(?:<[^>()]+>)?(?:\[\])?)\)\s*([a-zA-Z_$][\w.$]*)/g,
+    "$2 as $1",
+  );
+
+  // ============================================================
+  // Patch JJ (v1.0.8) — Java `catch (Type name)` → `catch (name)`.
+  // ============================================================
+  // TS catch params must be untyped (or use `: unknown`). Java idiom
+  // `catch (Exception e)` becomes plain `catch (e)`. Handles multi-catch
+  // (`catch (IOException | SQLException e)`) too.
+  body = body.replace(
+    /\bcatch\s*\(\s*([A-Z]\w+(?:\s*\|\s*[A-Z]\w+)*)\s+([a-zA-Z_$]\w*)\s*\)/g,
+    "catch ($2)",
   );
 
   // ============================================================

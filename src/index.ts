@@ -170,6 +170,7 @@ export async function convert(opts: ConvertOptions): Promise<{
   let pageObjectsConverted = 0;
   let testClassesConverted = 0;
   let testMethodsConverted = 0;
+  let _infrastructureSkipped = 0;
 
   for (const file of javaFiles) {
     // Per-file try/catch: a single problematic source file is logged + flagged
@@ -201,6 +202,24 @@ export async function convert(opts: ConvertOptions): Promise<{
           file: file.path,
           severity: "info",
           message: `Generated tests/fixtures.ts from \`${file.className}\`. Update converted spec files to \`import { test, expect } from '../fixtures'\` instead of '@playwright/test' to inherit shared setup.`,
+        });
+      } else if (file.kind === "infrastructure") {
+        // v1.0.8: Selenium driver-lifecycle infrastructure (DriverManager,
+        // BrowserFactory, ThreadLocal<WebDriver> wrappers, ChromeOptions
+        // builders). Playwright handles all of this via the page fixture —
+        // there is no Playwright equivalent to translate to. Skip emission
+        // and surface guidance in CONVERSION_REVIEW.md.
+        _infrastructureSkipped++;
+        warnings.push({
+          file: file.path,
+          severity: "info",
+          message:
+            "Skipped " +
+            file.className +
+            " — Selenium driver-lifecycle infrastructure has no Playwright equivalent. " +
+            "Playwright provides browser lifecycle through the page fixture; " +
+            "in your converted tests use async ({ page }) => { ... } and delete this file. " +
+            "See generated tests/fixtures.ts for the canonical pattern.",
         });
       } else if (file.kind === "unknown") {
         // Phase 6: try the custom-utility detector before giving up.

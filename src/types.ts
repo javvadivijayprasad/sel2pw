@@ -12,6 +12,7 @@ export type SourceKind =
   | "test-class"      // TestNG: contains @Test methods
   | "page-object"     // Page Object: usually has By/@FindBy fields and WebDriver field/ctor
   | "base"            // BaseTest / framework helpers
+  | "infrastructure"  // DriverManager / BrowserFactory / ThreadLocal<WebDriver> — Playwright handles via fixtures, skip emission
   | "config"          // pom.xml, testng.xml etc. (carried forward as review notes)
   | "unknown";
 

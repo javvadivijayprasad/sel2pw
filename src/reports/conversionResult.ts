@@ -27,7 +27,7 @@ export interface FileOutcome {
   /** Path relative to outputDir if converted, else null. */
   output: string | null;
   /** What the scanner classified this file as. */
-  sourceKind: "page-object" | "test-class" | "base" | "config" | "unknown";
+  sourceKind: "page-object" | "test-class" | "base" | "infrastructure" | "config" | "unknown";
   /** Final disposition. */
   status: "converted" | "stubbed" | "skipped" | "failed";
   /** Why the file got this status — one short sentence. */
