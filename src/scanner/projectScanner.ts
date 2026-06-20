@@ -163,7 +163,18 @@ function classify(className: string, source: string): SourceKind {
   const isOptionsBuilder =
     /^(?:ChromeOptionsBuilder|FirefoxOptionsBuilder|EdgeOptionsBuilder|BrowserOptionsBuilder|CapabilitiesBuilder|DesiredCapabilitiesBuilder)$/.test(className);
 
-  if (isInfrastructureName || hasThreadLocalDriver || isPureDriverSetup || isOptionsBuilder) {
+  // Guard against false positives. Classes that ALSO look like base test
+  // classes (BaseTest, TestBase, *Base) or have lifecycle methods are
+  // routed to "base" instead — they need fixture emission, not skipping.
+  // Same for classes that hold a WebDriver field via dependency injection
+  // (constructor-injected DriverManager wrappers used by Page Objects).
+  const looksLikeBase =
+    /^(?:BaseTest|TestBase|.*Base|.*BaseTest|AbstractTest|AbstractBaseTest)$/.test(className) ||
+    hasLifecycle;
+  if (
+    (isInfrastructureName || hasThreadLocalDriver || isPureDriverSetup || isOptionsBuilder) &&
+    !looksLikeBase
+  ) {
     return "infrastructure";
   }
 

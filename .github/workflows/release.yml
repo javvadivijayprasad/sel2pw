@@ -19,18 +19,19 @@ jobs:
           node-version: 20
           cache: npm
           registry-url: https://registry.npmjs.org
-      # Delete package-lock.json before install. The lock was generated on
-      # Windows and only records win32 platform binaries (rollup-win32-x64-*),
-      # so on the Linux runner npm respects the lock and skips installing
-      # the Linux-specific @rollup/rollup-linux-x64-gnu — then vitest
-      # (which uses rollup internally) crashes with MODULE_NOT_FOUND.
-      # npm's own error message recommends `rm package-lock.json && npm i`.
-      # Trade-off: release pipeline loses lockfile-strict resolution. The
-      # matrix `ci.yml` workflow keeps `npm ci` because it tests across
-      # Win/macOS/Linux and any cross-platform issue would surface there.
+      # Delete package-lock.json + node_modules + npm cache before install.
+      # The lock was generated on Windows and only records win32 rollup
+      # binaries. Even after removing the lock, `npm install` sometimes
+      # restores the cached install shape (which still lacks the Linux
+      # binary). Nuke everything and resolve fresh on the runner.
       # See https://github.com/npm/cli/issues/4828
-      - run: rm -f package-lock.json
-      - run: npm install --no-audit --no-fund
+      - run: rm -rf package-lock.json node_modules
+      - run: npm install --no-audit --no-fund --include=optional
+      # Explicit safety net — the npm bug above can still skip optional
+      # platform binaries even with --include=optional. Install the Linux
+      # rollup binary directly so vitest never crashes on MODULE_NOT_FOUND.
+      # --no-save keeps package.json clean.
+      - run: npm install --no-save --no-audit --no-fund @rollup/rollup-linux-x64-gnu || true
       - run: npm run lint
       - run: npm run build
       - run: npm test

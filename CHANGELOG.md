@@ -4,6 +4,27 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [1.0.9] — Fix BaseTest misclassification regression from v1.0.8
+
+v1.0.8 introduced infrastructure-skip detection so `DriverManager` / `BrowserFactory` / `ThreadLocal<WebDriver>` classes would no longer emit broken `.ts` files. But the detector was too aggressive: any class that instantiated a concrete driver (`new ChromeDriver()`) without an `@Test` annotation got classified as infrastructure and skipped — including `BaseTest` classes, which canonically do exactly that inside `@BeforeMethod`. Result: `tests/fixtures.ts` was not emitted for any project with a `BaseTest`, breaking the bundled sample's snapshot test and any user project that relied on fixture emission.
+
+v1.0.9 adds a guard: classes matching `BaseTest` / `TestBase` / `*Base` / `AbstractTest` / `AbstractBaseTest` patterns, OR classes with `@Before*` / `@After*` lifecycle methods, are NOT classified as infrastructure. They continue to route through the existing `"base"` path which generates `tests/fixtures.ts`.
+
+### Verified
+
+- Bundled `examples/selenium-testng-sample/BaseTest.java` (has `@BeforeMethod` + `new ChromeDriver()`) → correctly emits `tests/fixtures.ts` again
+- `eliasnogueira/selenium-java-lean-test-architecture/DriverManager.java` (no lifecycle, no @Test) → still correctly skipped as infrastructure; output remains 0 TS errors
+
+### Fixed
+
+- **`src/scanner/projectScanner.ts`** — infrastructure classification gated on `!looksLikeBase`, where `looksLikeBase` matches BaseTest-shaped class names OR presence of lifecycle annotations.
+
+### Not breaking
+
+Semver patch. The v1.0.8 substantive feature (infrastructure-skip) is preserved; this only narrows when it fires. v1.0.8 is a GitHub-tag-only release that never reached npm — users installing fresh should pull v1.0.9.
+
+---
+
 ## [1.0.8] — Selenium driver-lifecycle classes are now correctly skipped
 
 The biggest architectural shift since v1.0.0. **Selenium driver-lifecycle infrastructure** — `DriverManager`, `BrowserFactory`, `ThreadLocal<WebDriver>` wrappers, `ChromeOptions` builders — has **no Playwright equivalent**. Playwright provides driver/browser lifecycle through the `page` fixture: tests just do `async ({ page }) => { ... }` and the framework handles everything else.
