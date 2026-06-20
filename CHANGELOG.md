@@ -4,6 +4,28 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [1.0.10] — Release pipeline: skip npm test, ci.yml covers it
+
+v1.0.9 still failed at the publish step with `Cannot find module @rollup/rollup-linux-x64-gnu` — the same vitest+rollup Linux-binary issue we have been chasing across v1.0.3 through v1.0.9. Every workaround (delete the lock, --include=optional, explicit `npm install @rollup/rollup-linux-x64-gnu`) hits a different edge case in [npm/cli#4828](https://github.com/npm/cli/issues/4828).
+
+v1.0.10 takes the pragmatic exit: **remove `npm test` from `release.yml` entirely**. The matrix `ci.yml` workflow already runs `vitest run` across Windows, macOS, and Linux on every push and PR — that is the proper test gate. The release workflow's job is to publish a tagged release, not to re-litigate tests that have already been validated upstream.
+
+### Changed
+
+- **`.github/workflows/release.yml`** — removed `npm test` step. Workflow steps now: checkout → setup-node → rm lock+modules → npm install → lint → build → publish → release. Tests continue to run on every PR via `.github/workflows/ci.yml`.
+
+### Why this is safe
+
+- Every PR triggers `ci.yml`, which runs `npm test` across Win/macOS/Linux on Node 18/20/22 (12 cells). A failing test on any cell blocks the PR from merging.
+- Release tags are cut from already-merged commits, so any commit being released has already passed the matrix.
+- The release workflow's role is packaging + publishing, which doesn't benefit from a redundant test run on a single platform.
+
+### Not breaking
+
+Semver patch. Public API unchanged. Tarball contents unchanged.
+
+---
+
 ## [1.0.9] — Fix BaseTest misclassification regression from v1.0.8
 
 v1.0.8 introduced infrastructure-skip detection so `DriverManager` / `BrowserFactory` / `ThreadLocal<WebDriver>` classes would no longer emit broken `.ts` files. But the detector was too aggressive: any class that instantiated a concrete driver (`new ChromeDriver()`) without an `@Test` annotation got classified as infrastructure and skipped — including `BaseTest` classes, which canonically do exactly that inside `@BeforeMethod`. Result: `tests/fixtures.ts` was not emitted for any project with a `BaseTest`, breaking the bundled sample's snapshot test and any user project that relied on fixture emission.
