@@ -72,11 +72,69 @@ export const API_REWRITES: ApiRewrite[] = [
   },
   // Bare-field reference: driver.findElement(usernameInput) → this.usernameInput
   // (where `usernameInput` is a Locator field on the same Page Object).
+  // v2.0 consolidation — AssertJ `assertThat(actual).contains(x)` style.
+  // Playwright's `expect()` has matching matchers (.toContain, .toBe, .toBeNull
+  // etc.) so the simplest fix is to rewrite the entry point. Chained calls
+  // like `.contains(...)` become `.toContain(...)`; `.isEqualTo(x)` becomes
+  // `.toBe(x)` etc — those get handled by the chain-rewrite rules below.
+  {
+    pattern: /\bassertThat\s*\(/g,
+    replacement: "expect(",
+  },
+  {
+    pattern: /\)\s*\.contains\s*\(/g,
+    replacement: ").toContain(",
+  },
+  {
+    pattern: /\)\s*\.isEqualTo\s*\(/g,
+    replacement: ").toBe(",
+  },
+  {
+    pattern: /\)\s*\.isTrue\s*\(\s*\)/g,
+    replacement: ").toBe(true)",
+  },
+  {
+    pattern: /\)\s*\.isFalse\s*\(\s*\)/g,
+    replacement: ").toBe(false)",
+  },
+  {
+    pattern: /\)\s*\.isNull\s*\(\s*\)/g,
+    replacement: ").toBeNull()",
+  },
+  {
+    pattern: /\)\s*\.isNotNull\s*\(\s*\)/g,
+    replacement: ").not.toBeNull()",
+  },
+
   // Lower precedence than the By.* rules above — those match the explicit
   // selector strings and would never overlap with this generic pattern.
   {
     pattern: /\bdriver\.findElement\s*\(\s*(\w+)\s*\)/g,
     replacement: "this.$1",
+  },
+
+  // v2.0 consolidation — driver/page .findElement with ANY argument expression.
+  // The existing v1 rules above only catch (a) static-string By.* calls and
+  // (b) bare-identifier args. Real-world Selenium code mixes these with
+  // concatenated xpath strings, computed selectors, etc — none of which match.
+  // Map any surviving `<thing>.findElement(<expr>)` to `<thing>.locator(<expr>)`.
+  // .findElements (plural) gets `.all()` chained because the Playwright
+  // primitive returns a Locator handle, not a NodeList.
+  {
+    pattern: /\bdriver\.findElement\s*\(/g,
+    replacement: "this.page.locator(",
+  },
+  {
+    pattern: /\bdriver\.findElements\s*\(/g,
+    replacement: "this.page.locator(",
+  },
+  {
+    pattern: /\bthis\.page\.findElements?\s*\(/g,
+    replacement: "this.page.locator(",
+  },
+  {
+    pattern: /\bpage\.findElements?\s*\(/g,
+    replacement: "page.locator(",
   },
   // Plural variants: driver.findElements(...) → page.locator(...).all().
   // Note: callers using .stream().map(...) on the result need a `for` loop

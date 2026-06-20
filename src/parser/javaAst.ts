@@ -144,12 +144,15 @@ function extractPageObjectFromCst(file: JavaFile, cst: unknown): PageObjectIR {
   const methods = extractPageMethodsFromCst(root, file.source, file.className);
   const unknownFields = extractUnknownFieldsFromCst(root, fields);
 
+  const baseMatch_po = file.source.match(/class\s+\w+\s+extends\s+(\w+)/);
+
   return {
     className: file.className,
     packageName: file.packageName,
     fields,
     methods,
     unknownFields,
+    extendsClass: baseMatch_po ? baseMatch_po[1] : undefined,
   };
 }
 

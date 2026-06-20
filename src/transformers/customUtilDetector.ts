@@ -207,7 +207,10 @@ export function detectCustomUtilities(file: JavaFile): DetectedUtility | null {
   return null;
 }
 
-export function emitUtilityStub(util: DetectedUtility): {
+export function emitUtilityStub(
+  util: DetectedUtility,
+  source?: string,
+): {
   converted: ConvertedFile;
   warning: ReviewItem;
 } {
@@ -260,6 +263,42 @@ export function emitUtilityStub(util: DetectedUtility): {
   lines.push(`  static notImplemented(method = "<method>"): never {`);
   lines.push("    throw new Error(`${this.name}.${method} is a sel2pw stub — migrate this call site to a Playwright fixture.`);");
   lines.push(`  }`);
+
+  // v2.0 consolidation — extract `public static` method signatures from the
+  // original Java so call sites compile. Bodies funnel through notImplemented,
+  // so any production code path throws a clear runtime error pointing at the
+  // exact unimplemented method.
+  if (source) {
+    const staticMethodRe =
+      /\bpublic\s+static\s+(?:final\s+)?[\w<>,.\s[\]]+?\s+(\w+)\s*\(([^)]*)\)/g;
+    const seen = new Set<string>();
+    let m: RegExpExecArray | null;
+    while ((m = staticMethodRe.exec(source)) !== null) {
+      const name = m[1];
+      if (name === util.className) continue; // constructor
+      if (name === "notImplemented") continue;
+      if (seen.has(name)) continue;
+      seen.add(name);
+      const paramsRaw = m[2].trim();
+      const tsParams = paramsRaw
+        ? paramsRaw
+            .split(",")
+            .map((p) => {
+              const parts = p.trim().split(/\s+/);
+              const pname = parts[parts.length - 1].replace(/[^\w]/g, "");
+              return pname ? `${pname}: unknown` : "";
+            })
+            .filter(Boolean)
+            .join(", ")
+        : "";
+      lines.push("");
+      lines.push(`  /** Stub for the Java \`public static\` method \`${name}\`. */`);
+      lines.push(`  static ${name}(${tsParams}): any {`);
+      lines.push(`    return ${util.className}.notImplemented(\`${name}\`);`);
+      lines.push(`  }`);
+    }
+  }
+
   lines.push(`}`);
   lines.push(``);
 

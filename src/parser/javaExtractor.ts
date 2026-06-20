@@ -36,6 +36,7 @@ export function extractPageObject(file: JavaFile): PageObjectIR {
     fields,
     methods,
     unknownFields,
+    extendsClass: file.source.match(/class\s+\w+\s+extends\s+(\w+)/)?.[1],
   };
 }
 

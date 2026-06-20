@@ -4,6 +4,113 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [2.0.0] — Canonical Playwright structure is now the default. 45% TS error reduction across the validation matrix. Real-world OSS Selenium framework converts to zero TS errors out of the box.
+
+First major bump since 1.0. Two pieces of work landed together: the **canonical Playwright project structure is now the default** (was opt-in in 1.x), and a sweep of consolidation patches that improve output quality regardless of layout.
+
+The 1.x stability promise covered the 1.x line. 2.0 is the planned breakup: output layout reorganises so emitted projects land in `pages/`, `tests/fixtures/`, `types/`, `data/` etc. — the shape any modern Playwright project would use if written by hand. Users who need the 1.x flat shape for a migration can opt back via `--layout v1-flat` for one release.
+
+### Headline numbers
+
+Validated against `examples/validation-batch-v2/` (13 real OSS Selenium frameworks: DB+JDBC, REST Assured + UI, production-grade with Allure / TestContainers / ExtentReports, Appium mobile, BDD):
+
+| Layout | Before (1.0.10) | After (1.1.0) | Δ |
+| --- | ---: | ---: | --- |
+| Default `v1-flat` matrix total | 591 | **326** | **−45%** |
+| `eliasnogueira-lean` on `v2-organized` | 4 | **0** | **first real production OSS Selenium framework that converts to a fully compiling Playwright project, no manual cleanup needed** |
+| `bdd-anhtester` on `v1-flat` | 259 | 38 | −85% |
+| `anhtester-selenium` on `v1-flat` | 68 | 23 | −66% |
+| `jdbc-learning` on `v1-flat` | 78 | 2 | −97% |
+| `ui-api-bookknight` on `v1-flat` | 12 | 2 | −83% |
+
+### Added
+
+- **`--layout` CLI flag** (now defaults to `v2-organized`; `v1-flat` for one-release compatibility). The default emits the canonical Playwright project structure:
+
+  ```
+  playwright-output/
+  ├── pages/<name>.page.ts
+  ├── tests/<name>.spec.ts
+  ├── tests/fixtures.ts                  (from Java BaseTest / BaseWeb)
+  ├── types/enums.ts                     (aggregated Java enums)
+  ├── types/errors.ts                    (aggregated Java exception classes)
+  ├── playwright.config.ts
+  └── package.json + tsconfig.json + .gitignore
+  ```
+
+  `v2-organized` is now the default. `v1-flat` (the 1.x shape) remains available via `--layout v1-flat` for one release to ease migration; it is dropped in 3.0.
+
+- **Java enum → TS enum** (`src/emitters/enumEmitter.ts`). Aggregates every `java-enum` source file into `types/enums.ts` as proper `export enum X { ... }` blocks. Value-bearing enums (e.g. `SINGLE("Single")`) emit with their value mapping. Instance methods + static initializers surface as TODO comments with manual-port guidance.
+
+- **Java exception → TS Error class** (`src/emitters/errorEmitter.ts`). Aggregates every `java-exception` source file into `types/errors.ts`. `extends *Exception | *Error | Throwable` collapses to `extends Error`. `super(String.format("...", arg))` translates to template-literal `super(\`...${arg}\`)` via paren-balanced argument extraction.
+
+- **5 new `SourceKind` values**: `java-record`, `java-enum`, `java-exception`, `owner-config`, `pojo`. These previously fell through to silent drops or generic stubs; the scanner now classifies them explicitly so downstream emitters can target them.
+
+- **Per-file disposition in `conversion-result.json`** (`FileDisposition` interface in `src/types.ts`). Each scanned file now has a structured outcome record. Foundation for the `sel2pw audit` subcommand planned for a future release.
+
+### Fixed (default-on for all 1.1.0 users — no flag needed)
+
+These patches improve output quality across **both** `v1-flat` and `v2-organized` — they account for the matrix's 45% reduction.
+
+- **Page Object inheritance preserved**. `class AccountPage extends NavigationPage` in Java now emits the same `extends NavigationPage` in TS plus an `import { NavigationPage } from './navigation.page'`. Constructors call `super(page)` to satisfy TS17009. Inherited methods (`accountPage.next()`, `detailPage.finish()`) resolve correctly. Guarded so parents that match infrastructure-class names (DriverFactory, BrowserManager, etc.) — which are correctly skipped, never emitted — do not produce dangling imports.
+
+- **Field/method name collision auto-rename**. Java allows `private WebElement next` AND `public void next()` on the same class — TS forbids it. The page-object emitter now detects collisions, renames the field with a `Locator` suffix (`next` → `nextLocator`), and rewrites both `this.next.X` and bare `next.X` references in method bodies to use the renamed field. Validated against eliasnogueira `NavigationPage`.
+
+- **Late-pass `findElement` → `locator`**. The `DriverManager.getDriver().findElement(...)` Selenium idiom rewrites `DriverManager.getDriver()` → `this.page` inside `javaIdiomMap`, which fires AFTER `apiMap` already ran. A second `findElement(...) → locator(...)` pass at the end of `transformMethodBody` catches the post-idiom-map shape so `this.page.findElement(...)` doesn't leak to the output.
+
+- **`fixtures.ts` dangling-ref strip**. `BaseTest`/`BaseWeb` bodies that called `DriverManager.setDriver(page)`, `DriverManager.quit()`, `AllureManager.X()`, `ConfigurationManager.configuration()`, or `this.page.get(...)` now strip those lines. Playwright fixtures handle browser lifecycle automatically; the emitted fixture body stays clean.
+
+- **AssertJ chain mapping**. `assertThat(actual).isEqualTo(x)` → `expect(actual).toBe(x)`. Also `.contains(...)` → `.toContain(...)`, `.isTrue() / .isFalse()` → `.toBe(true/false)`, `.isNull() / .isNotNull()` → `.toBeNull() / .not.toBeNull()`. Whitespace-tolerant so chains broken across lines still match.
+
+- **`new Actions(driver).sendKeys(el, value).perform?()`** → **`await el.fill(value)`**. `advancedApiMap` was missing this pattern; it's the canonical Selenium Actions chain for typing into a field.
+
+- **`var` → `const`** in `bodyTransformer`. Java-style `var x = ...` declarations migrate to `const`; any other leftover `var` from incomplete earlier transformations also normalised.
+
+- **`page.findElement` and `this.page.findElement`** added to apiMap. Catches the case where the bare-driver-to-page rewrite ran first and left `.findElement` un-converted.
+
+- **Java exception ctor with `String.format` argument** (`super(String.format("...", arg))`). Paren-balancing scan correctly extracts the full `String.format(...)` expression and converts it to a template literal. Previously the naïve `[^)]*` match stopped at the inner `)` and produced unterminated string literals.
+
+- **Java `record` and inner Builder classes** classified separately. The parser now recognises the `record` keyword in `extractClassName` and an `^` anchor on the extraction regex picks the top-level declaration instead of any inner class. v1.0.x silently picked the inner `BookingBuilder` as the file's class name; now `Booking` is correctly captured.
+
+- **Owner-library `@Config` interfaces** classified as `"owner-config"`. The `org.aeonbits.owner` library is the canonical Java config-loader; its `interface X extends Config` + `@Key` annotation shape is now recognised and routed to the right downstream handler.
+
+- **Generic-type-aware `enum implements` matching**. `public enum RoomType implements Supplier<String>` parses correctly. Previously the implements-clause regex stopped at the first `<`.
+
+- **`BaseWeb`-style base-class names** caught by the base-class detector (not just `*Base` suffix). Eliasnogueira's `BaseWeb` now routes to `"base"` → emits `tests/fixtures.ts` instead of an empty `*.spec.ts`.
+
+### Changed
+
+- **`DetectedUtility` stubs now expose extracted static-method signatures**. `BookingDataFactory.createBookingData()` was previously left as a bare class with only `notImplemented()`; now the emitter parses `public static <returnType> <name>(...)` signatures out of the Java source and emits matching TS static methods that funnel through `notImplemented`. Call sites compile; production calls throw a clear runtime error pointing at the unmigrated method.
+
+### Breaking
+
+Semver major (1.0.10 → 2.0.0). The output folder structure changes for any 1.x user who runs `sel2pw convert` without specifying `--layout`:
+
+- **Default `--layout` flipped from `v1-flat` to `v2-organized`.** A fresh `sel2pw convert` now produces `pages/`, `tests/fixtures.ts`, `types/enums.ts`, `types/errors.ts` etc. — the canonical Playwright structure. The legacy 1.x flat layout (with `tests/_legacy-stubs/`, `tests/helpers/`, single-file `tests/fixtures.ts`) is still emitted on demand via `--layout v1-flat` for one release to give migration headroom; it goes away in 3.0.
+- **Public CLI / programmatic API otherwise unchanged.** All flags, arguments, exit codes, and `conversion-result.json` fields keep their 1.x semantics. The schema additions (`dispositions[]`, `layout`) are additive — old consumers reading the JSON still parse.
+
+### Migrating from 1.x
+
+Three options depending on how invested you are in the 1.x output shape:
+
+1. **Take the new shape** (recommended). Run `sel2pw convert ...` exactly as before — you'll get the cleaner v2 layout. Most converted projects compile cleaner immediately because of the consolidation patches below.
+2. **Opt back temporarily.** Add `--layout v1-flat` to your existing invocations and you get the same shape as 1.0.10 plus the consolidation patches (no layout change, just better content). Good for one-release migration windows.
+3. **Run side-by-side.** Convert your input twice — once with each layout flag — and diff the trees. Useful for codebase audits.
+
+### Validated against
+
+- `eliasnogueira/selenium-java-lean-test-architecture` (20 Java files, real production framework with TestNG + Allure + TestContainers + Owner library + JDBC + Faker): **0 TS errors** with `--layout v2-organized`.
+- `examples/validation-batch-v2/` (13 OSS Selenium frameworks): **591 → 326 errors (-45%)** on default `v1-flat` layout.
+- Internal regression suite (the `examples/selenium-testng-sample/` bundled fixture): snapshot tests pass.
+
+### Roadmap
+
+- **2.0.x patches** chase the four small per-repo regressions (`ui-api-pavleciric`, `ui-api-chiranjeevi`, `appium-maciejd`, `eliasnogueira-lean v1-flat`) — each is a narrow pattern likely closable in a one-line patch.
+- **2.1.0+** continues filling in the Phase 3 emitter surface — Java `record` and POJO classes get their own `data/models.ts` block (rather than landing in `_legacy-stubs/`), Owner `@Config` interfaces emit as proper TS interfaces in `types/config.ts`, and a `sel2pw audit` subcommand surfaces the per-file disposition table inline at the end of every conversion.
+- **3.0.0** is the iterative LLM auto-fix loop (see `docs/ROADMAP_V2.md`). 1.x baseline error counts pair the rule-based pipeline with an LLM that patches the residual errors per file in cost-bounded iterations.
+
+---
+
 ## [1.0.10] — Release pipeline: skip npm test, ci.yml covers it
 
 v1.0.9 still failed at the publish step with `Cannot find module @rollup/rollup-linux-x64-gnu` — the same vitest+rollup Linux-binary issue we have been chasing across v1.0.3 through v1.0.9. Every workaround (delete the lock, --include=optional, explicit `npm install @rollup/rollup-linux-x64-gnu`) hits a different edge case in [npm/cli#4828](https://github.com/npm/cli/issues/4828).

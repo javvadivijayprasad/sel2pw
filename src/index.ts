@@ -17,6 +17,8 @@ import {
   emitUtilityStub,
 } from "./transformers/customUtilDetector";
 import { hasSeleniumApi, emitConvertibleHelper } from "./emitters/helperClassEmitter";
+import { emitEnumsFile } from "./emitters/enumEmitter";
+import { emitErrorsFile } from "./emitters/errorEmitter";
 import { buildAutoImportIndex, detectMissingImports } from "./emitters/autoImports";
 import { prettyPrint } from "./post/prettierFormat";
 import { tscValidate } from "./post/tscValidate";
@@ -98,6 +100,17 @@ export interface ConvertOptions {
    *               so tests use `async ({ pages }) => pages.login.x()`.
    */
   pomStyle?: "instance" | "factory";
+  /**
+   * v2.0 — output folder layout strategy.
+   *   "v1-flat" (default for the 1.x line): the current shape — pages/, tests/,
+   *     tests/_legacy-stubs/, tests/helpers/, tests/fixtures.ts.
+   *   "v2-organized" (opt-in via --layout v2 during 1.x, default once 2.0 ships):
+   *     adds data/, types/, tests/fixtures/, _review/ subfolders so emitters can
+   *     route Java records / enums / exceptions / config interfaces to their
+   *     canonical Playwright destinations instead of dumping them into _legacy-stubs.
+   *   See src/types.ts > OutputLayout for the full destination map.
+   */
+  layout?: "v1-flat" | "v2-organized";
   /**
    * Force a particular source stack. When omitted (default), the stack is
    * auto-detected from the input directory's file extensions.
@@ -203,6 +216,13 @@ export async function convert(opts: ConvertOptions): Promise<{
           severity: "info",
           message: `Generated tests/fixtures.ts from \`${file.className}\`. Update converted spec files to \`import { test, expect } from '../fixtures'\` instead of '@playwright/test' to inherit shared setup.`,
         });
+      } else if (
+        (file.kind === "java-enum" || file.kind === "java-exception") &&
+        opts.layout === "v2-organized"
+      ) {
+        // v2.0 — handled by the post-loop aggregator that emits
+        // types/enums.ts + types/errors.ts. No per-file output here.
+        // (Per-file review notes get added by the emitters themselves.)
       } else if (file.kind === "infrastructure") {
         // v1.0.8: Selenium driver-lifecycle infrastructure (DriverManager,
         // BrowserFactory, ThreadLocal<WebDriver> wrappers, ChromeOptions
@@ -240,7 +260,7 @@ export async function convert(opts: ConvertOptions): Promise<{
               message: `Detected Selenium API in \`${file.className}\` (${util.kind}) — converted to TS helper class at \`${helper.converted.relPath}\` instead of stubbing. Verify method bodies; complex constructs may still need manual review.`,
             });
           } else {
-            const stub = emitUtilityStub(util);
+            const stub = emitUtilityStub(util, file.source);
             converted.push(stub.converted);
             warnings.push(stub.warning);
           }
@@ -301,6 +321,34 @@ export async function convert(opts: ConvertOptions): Promise<{
           createdAt: new Date().toISOString(),
         });
       }
+    }
+  }
+
+  // v2.0 Phase 2 — aggregate Java enums + exceptions into types/enums.ts
+  // + types/errors.ts when --layout v2-organized. The per-file loop above
+  // SKIPS these kinds when v2-organized is in effect (no per-file output);
+  // emission happens here so all enums land in one file, all errors in one
+  // file. v1-flat leaves these to fall through to the legacy stub path.
+  if (opts.layout === "v2-organized") {
+    const enumsOut = emitEnumsFile(javaFiles);
+    if (enumsOut.source) {
+      converted.push({
+        relPath: "types/enums.ts",
+        source: enumsOut.source,
+        warnings: enumsOut.warnings,
+        kind: "config",
+      });
+      warnings.push(...enumsOut.warnings);
+    }
+    const errorsOut = emitErrorsFile(javaFiles);
+    if (errorsOut.source) {
+      converted.push({
+        relPath: "types/errors.ts",
+        source: errorsOut.source,
+        warnings: errorsOut.warnings,
+        kind: "config",
+      });
+      warnings.push(...errorsOut.warnings);
     }
   }
 

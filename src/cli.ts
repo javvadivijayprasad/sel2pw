@@ -52,6 +52,7 @@ program
   )
   .option("--no-todo-markers", "Skip inserting // TODO(sel2pw): markers in generated code.")
   .option("--pom-style <style>", "Page Object style: 'instance' (default) or 'factory' (page-bag fixture).", "instance")
+  .option("--layout <layout>", "Output folder layout. 'v2-organized' (default, canonical Playwright structure: pages/, tests/fixtures/, types/, data/) or 'v1-flat' (legacy 1.x shape — kept for one release for migration).", "v2-organized")
   .option("--lang <lang>", "Force source language: 'java' or 'csharp'. Auto-detected when omitted.")
   .option("--llm-provider <p>", "LLM fallback provider: anthropic | openai | gemini.")
   .option("--llm-key <k>", "API key for the LLM provider (or set ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY env).")
@@ -70,6 +71,7 @@ program
     bddMode?: "preserve" | "flatten";
     todoMarkers?: boolean;
     pomStyle?: "instance" | "factory";
+    layout?: "v1-flat" | "v2-organized";
     lang?: "java" | "csharp";
     llmProvider?: "anthropic" | "openai" | "gemini";
     llmKey?: string;
@@ -112,6 +114,7 @@ program
         bddMode: opts.bddMode,
         emitTodoMarkers: opts.todoMarkers,
         pomStyle: opts.pomStyle,
+        layout: opts.layout ?? "v2-organized",
         forceStack: opts.lang === "csharp" ? "csharp-nunit" : opts.lang === "java" ? "java-testng" : undefined,
         llmFallback,
       });

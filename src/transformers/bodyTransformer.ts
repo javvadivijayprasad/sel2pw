@@ -106,6 +106,27 @@ export function transformMethodBody(
   // Bare `else //comment` (no parens) — `else` keyword followed by a comment.
   body = body.replace(/\belse\s+(\/\/[^\n]*)/g, "else { $1 }");
 
+  // v2.0 consolidation — late-pass apiMap cleanup.
+  // javaIdiomMap (step 2c) rewrites `DriverManager.getDriver()` → `this.page`,
+  // turning code like `DriverManager.getDriver().findElement(x)` into
+  // `this.page.findElement(x)`. But apiMap (step 2) already ran by that point,
+  // so its `.findElement → .locator` rules don't get a second pass. Run them
+  // again here to catch the post-idiom-map shapes.
+  body = body.replace(/\bthis\.page\.findElement\s*\(/g, "this.page.locator(");
+  body = body.replace(/\bthis\.page\.findElements\s*\(/g, "this.page.locator(");
+  body = body.replace(/\bpage\.findElement\s*\(/g, "page.locator(");
+  body = body.replace(/\bpage\.findElements\s*\(/g, "page.locator(");
+
+    // v2.0 consolidation — Java `var` (or surviving `var` from incomplete
+  // earlier transformations) is a JS hoisting keyword we don't want; convert
+  // to `const`. Skip declarations that are followed by reassignment in the
+  // same block (we'd need a proper AST for that — vanishingly rare for
+  // method-local Java-style locals).
+  body = body.replace(
+    /^([\t ]*)var\s+(\w+)\s*=/gm,
+    "$1const $2 =",
+  );
+
   return { body, warnings };
 }
 

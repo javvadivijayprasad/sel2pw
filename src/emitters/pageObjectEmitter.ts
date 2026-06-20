@@ -52,13 +52,54 @@ export function emitPageObject(
     lines.push(`import { healOrThrow } from '@platform/sdk-self-healing';`);
   }
   lines.push("");
-  lines.push(`export class ${ir.className} {`);
+  // v2.0 — preserve Java `extends` so inherited methods (NavigationPage.next,
+  // BasePage.<X>) compile in the converted code. Add an import for the parent.
+  // GUARD: skip extends when the parent is infrastructure (DriverManager,
+  // BrowserFactory, etc.) — those classes are intentionally NOT emitted, so
+  // importing or inheriting from them produces a Cannot-find-module error.
+  // Same guard list as src/scanner/projectScanner.ts > isInfrastructureName.
+  const _parentLooksInfra = ir.extendsClass
+    ? /^(?:DriverManager|WebDriverManager|DriverFactory|WebDriverFactory|BrowserFactory|BrowserManager|DriverProvider|WebDriverProvider|BrowserProvider|SeleniumDriverManager|DriverInitializer|DriverConfiguration|BrowserConfiguration|DriverContext|WebDriverContext|TargetFactory|ChromeOptionsBuilder|FirefoxOptionsBuilder|EdgeOptionsBuilder|BrowserOptionsBuilder|CapabilitiesBuilder|DesiredCapabilitiesBuilder)$/.test(ir.extendsClass)
+    : false;
+  const _extendsClause = ir.extendsClass && !_parentLooksInfra
+    ? ` extends ${ir.extendsClass}`
+    : "";
+  if (ir.extendsClass && !_parentLooksInfra) {
+    const parentFile = pageObjectFileName(ir.extendsClass).replace(/\.ts$/, "");
+    lines.push(`import { ${ir.extendsClass} } from './${parentFile}';`);
+    lines.push("");
+  }
+  lines.push(`export class ${ir.className}${_extendsClause} {`);
   lines.push(`  readonly page: Page;`);
+
+  // v2.0 / consolidation patch — TS forbids a class member from being
+  // declared as both a property and a method with the same name. Java has
+  // no such restriction (e.g. eliasnogueira's NavigationPage has a
+  // `private WebElement next` field AND a `public void next()` method).
+  // Detect collisions and rename the colliding field with a `Locator`
+  // suffix; later we rewrite `this.<old>` in the method bodies so the
+  // semantic stays the same.
+  const _methodNames = new Set(ir.methods.map((m) => m.name));
+  const _fieldRename = new Map<string, string>();
+  for (const f of ir.fields) {
+    if (_methodNames.has(f.name)) {
+      const renamed = `${f.name}Locator`;
+      _fieldRename.set(f.name, renamed);
+      f.name = renamed;
+    }
+  }
   for (const f of ir.fields) {
     lines.push(renderLocatorFieldDeclaration(f));
   }
   lines.push("");
   lines.push(`  constructor(page: Page) {`);
+  // v2.0 — when the class extends another Page Object, we must call super(page)
+  // BEFORE any `this.X = ...` assignment. TS strict mode (TS17009) requires this.
+  // Skip when the parent looks like infrastructure — extends was already
+  // suppressed above in that case, so a super() here would be unbound.
+  if (ir.extendsClass && !_parentLooksInfra) {
+    lines.push(`    super(page);`);
+  }
   lines.push(`    this.page = page;`);
   for (const f of ir.fields) {
     if (opts.selfHealingShim) {
@@ -129,6 +170,22 @@ export function emitPageObject(
     for (const sibling of ir.methods) {
       const re = new RegExp(`(^|[^\\w.])(?<!await\\s)${sibling.name}\\s*\\(`, "gm");
       body = body.replace(re, (_m, pre) => `${pre}await this.${sibling.name}(`);
+    }
+    // v2.0 — when a Page Object field was renamed because its name collided
+    // with a method name (Phase 2 consolidation), rewrite TWO body forms:
+    //   - `this.<old>` (the form bodyTransformer normally produces)
+    //   - bare `<old>` (in case bodyTransformer's bare-field-to-this pass
+    //     missed it; happens when the field was renamed BEFORE that pass ran,
+    //     so the bare form survives in the body unchanged)
+    // Both must be rewritten to `this.<new>` so the field reference resolves.
+    for (const [oldName, newName] of _fieldRename) {
+      const dotRe = new RegExp(`\\bthis\\.${oldName}\\b`, "g");
+      body = body.replace(dotRe, `this.${newName}`);
+      // Bare form, but NOT after `.` (else we'd hit `foo.next` from arg)
+      // and NOT inside method-call form `<old>(` (that's a sibling-method
+      // call which was already rewritten above to `await this.${old}(`).
+      const bareRe = new RegExp(`(^|[^.\\w])${oldName}(\\s*\\.)`, "g");
+      body = body.replace(bareRe, `$1this.${newName}$2`);
     }
 
     // v0.11.3 Patch P: catch-all for inherited / parent-class methods that

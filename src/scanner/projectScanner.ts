@@ -86,7 +86,7 @@ function extractClassName(source: string): string | null {
   // not a Java reserved word. Belt-and-suspenders on top of the comment
   // strip — strings like `"class for X"` could still sneak through, but
   // the reserved-word filter catches the common cases.
-  const re = /\b(?:public\s+|protected\s+|private\s+|abstract\s+|final\s+|static\s+)*(?:class|enum|interface)\s+(\w[\w$]*)/g;
+  const re = /^\s*(?:public\s+|protected\s+|private\s+|abstract\s+|final\s+|static\s+)*(?:class|enum|interface|record)\s+(\w[\w$]*)/gm;
   let m: RegExpExecArray | null;
   while ((m = re.exec(stripped)) !== null) {
     const name = m[1];
@@ -119,6 +119,95 @@ function classify(className: string, source: string): SourceKind {
   const hasJavaSteps =
     /\bimport\s+io\.cucumber\b/.test(source) ||
     /@(Given|When|Then|And|But)\s*\(/.test(source);
+
+  // Shared driver-instantiation predicates — used by both the v2.0 Phase 1
+  // data-type checks below AND the v1.0.8 infrastructure check further down.
+  const hasThreadLocalDriver =
+    /\bThreadLocal\s*<\s*(?:WebDriver|IWebDriver|RemoteWebDriver|EventFiringWebDriver|AppiumDriver)\b/.test(source);
+  const instantiatesConcreteDriver =
+    /\bnew\s+(?:ChromeDriver|FirefoxDriver|EdgeDriver|SafariDriver|InternetExplorerDriver|OperaDriver|RemoteWebDriver|AndroidDriver|IOSDriver|AppiumDriver)\s*\(/.test(source);
+
+  // ============================================================
+  // Phase 1 (v2.0) — richer Java type detection
+  // ============================================================
+  // Five new kinds that v1.x silently dropped or stubbed:
+  //   1. java-enum       -> types/enums.ts (proper TS enum)
+  //   2. java-record     -> data/models.ts (TS interface + optional Builder)
+  //   3. java-exception  -> types/errors.ts (class X extends Error)
+  //   4. owner-config    -> types/config.ts + tests/config.ts (Owner @Config interface)
+  //   5. pojo            -> data/models.ts (TS interface from private-fields-with-getters)
+  //
+  // These must fire BEFORE the listener / page-object branches so that:
+  //   - HeadlessNotSupportedException doesn't get stubbed as a "test-util"
+  //   - Configuration (Owner @Config interface) doesn't get silently dropped
+  //   - Booking record doesn't fall into "unknown" with no review note
+  //
+  // They DO fire after the infrastructure check so DriverManager etc. still skip
+  // (a class can theoretically extend RuntimeException AND be infra; infra wins).
+
+  // 1) Java enum — explicit `enum Name {` keyword on a class-declaration line.
+  //    Inner enums inside other classes are intentionally not caught here; they
+  //    are handled at emit time when the parent is processed.
+  const isJavaEnum =
+    /^\s*(?:public\s+|protected\s+|private\s+)?enum\s+\w+\s*(?:implements\s+[\w.,<>\s[\]]+)?\s*\{/m.test(source);
+
+  // 2) Java record (Java 14+) — `public record X(...) { ... }`. Tolerate
+  //    `final` and modifier ordering, and tolerate a trailing `implements`.
+  const isJavaRecord =
+    /^\s*(?:public\s+|protected\s+|private\s+)?(?:final\s+|abstract\s+)?record\s+\w+\s*\(/m.test(source);
+
+  // 3) Java exception — class extends *Exception / *Error / Throwable. We also
+  //    catch the canonical "FooException" / "FooError" suffix so projects that
+  //    extend their own base exception (BaseException extends RuntimeException)
+  //    still classify correctly.
+  const extendsThrowable =
+    /^\s*public\s+(?:abstract\s+|final\s+)?class\s+\w+\s+extends\s+\w*(?:Exception|Error|Throwable)\b/m.test(source);
+  const hasExceptionSuffix =
+    /(?:Exception|Error|Throwable)$/.test(className);
+  const isJavaException = extendsThrowable || (hasExceptionSuffix && /^\s*public\s+class\b/m.test(source));
+
+  // 4) Owner-library config interface — Aeonbits Owner is the canonical Java
+  //    config library. Distinctive signals are `import org.aeonbits.owner.*` +
+  //    `interface X extends Config` + `@Key(...)` annotated methods. Any two
+  //    of these is enough to be confident.
+  const usesOwnerLib = /\borg\.aeonbits\.owner\b/.test(source);
+  const isConfigInterface =
+    /^\s*(?:public\s+)?interface\s+\w+\s+extends\s+(?:[\w.]+\.)?Config\b/m.test(source);
+  const hasOwnerKey = /@Key\s*\(/.test(source);
+  const isOwnerConfig =
+    (usesOwnerLib && isConfigInterface) ||
+    (isConfigInterface && hasOwnerKey) ||
+    (usesOwnerLib && hasOwnerKey);
+
+  // 5) POJO — private fields + public getters, no test/locator/driver pollution.
+  //    Deliberately conservative: must have at least one `private TYPE name;`
+  //    field AND at least one `public TYPE getX()` getter AND no test/page
+  //    annotations. We allow @JsonProperty / Lombok-style annotations on fields.
+  const hasPrivateField = /^\s*private\s+(?:final\s+)?[\w.<>,\s[\]]+\s+\w+\s*[=;]/m.test(source);
+  const hasPublicGetter = /^\s*public\s+[\w.<>,\s[\]]+\s+get[A-Z]\w*\s*\(\s*\)\s*\{/m.test(source);
+  const isPojo =
+    hasPrivateField &&
+    hasPublicGetter &&
+    !hasTestAnnotation &&
+    !hasFindBy &&
+    !hasByStatic &&
+    !hasWebDriverField &&
+    !hasLifecycle;
+
+  // Guard: pure data types never instantiate a WebDriver. If a class IS
+  // declared as enum/record/etc but ALSO has `new ChromeDriver()` style code
+  // (eliasnogueira's BrowserFactory is the canonical example — a "factory enum"
+  // that constructs drivers), let infrastructure detection below claim it.
+  const looksLikeDataType = !instantiatesConcreteDriver && !hasThreadLocalDriver;
+
+  if (isJavaEnum && looksLikeDataType) return "java-enum";
+  if (isJavaRecord && looksLikeDataType) return "java-record";
+  if (isOwnerConfig && looksLikeDataType) return "owner-config";
+  if (isJavaException && looksLikeDataType) return "java-exception";
+
+  // ============================================================
+  // (existing v1.x detection follows — listener interfaces, infra, base, etc.)
+  // ============================================================
 
   // Java TestNG listener / utility interfaces. These classes commonly hold
   // a `WebDriver` reference (for screenshot-on-failure) which would
@@ -154,10 +243,6 @@ function classify(className: string, source: string): SourceKind {
   // `driver.set()`, `driver.remove()` that have no Playwright equivalent.
   const isInfrastructureName =
     /^(?:DriverManager|WebDriverManager|DriverFactory|WebDriverFactory|BrowserFactory|BrowserManager|DriverProvider|WebDriverProvider|BrowserProvider|SeleniumDriverManager|DriverInitializer|DriverConfiguration|BrowserConfiguration|DriverContext|WebDriverContext)$/.test(className);
-  const hasThreadLocalDriver =
-    /\bThreadLocal\s*<\s*(?:WebDriver|IWebDriver|RemoteWebDriver|EventFiringWebDriver|AppiumDriver)\b/.test(source);
-  const instantiatesConcreteDriver =
-    /\bnew\s+(?:ChromeDriver|FirefoxDriver|EdgeDriver|SafariDriver|InternetExplorerDriver|OperaDriver|RemoteWebDriver|AndroidDriver|IOSDriver|AppiumDriver)\s*\(/.test(source);
   const isPureDriverSetup =
     instantiatesConcreteDriver && !hasTestAnnotation && !hasFindBy;
   const isOptionsBuilder =
@@ -169,7 +254,7 @@ function classify(className: string, source: string): SourceKind {
   // Same for classes that hold a WebDriver field via dependency injection
   // (constructor-injected DriverManager wrappers used by Page Objects).
   const looksLikeBase =
-    /^(?:BaseTest|TestBase|.*Base|.*BaseTest|AbstractTest|AbstractBaseTest)$/.test(className) ||
+    /^(?:BaseTest|TestBase|.*Base|.*BaseTest|AbstractTest|AbstractBaseTest|Base\w*|\w*Base|Base\w*Test|Base\w*Spec|Base\w*Web|\w*BaseWeb)$/.test(className) ||
     hasLifecycle;
   if (
     (isInfrastructureName || hasThreadLocalDriver || isPureDriverSetup || isOptionsBuilder) &&
@@ -179,7 +264,7 @@ function classify(className: string, source: string): SourceKind {
   }
 
   // Base classes: name pattern OR (lifecycle methods but no @Test)
-  if (/^(BaseTest|TestBase|.*Base)$/.test(className) && !hasTestAnnotation) {
+  if (/^(?:BaseTest|TestBase|.*Base|Base\w*|\w*Base|AbstractTest|AbstractBaseTest|Base\w*Test|Base\w*Spec|Base\w*Web|\w*BaseWeb)$/.test(className) && !hasTestAnnotation) {
     return "base";
   }
 
@@ -212,6 +297,11 @@ function classify(className: string, source: string): SourceKind {
   ) {
     return "page-object";
   }
+
+  // POJO check fires LAST so it doesn't shadow base/test/page detection above.
+  // A class with private fields + getters that also has @Test or @FindBy is a
+  // test or page object, not a pojo — those branches above already returned.
+  if (isPojo) return "pojo";
 
   return "unknown";
 }

@@ -188,6 +188,29 @@ function stripDriverBoilerplate(body: string): string {
       // System.setProperty for driver paths (predates WebDriverManager)
       if (/^System\.setProperty\s*\(\s*"webdriver\.\w+\.driver"/.test(t)) return false;
 
+      // v2.0 consolidation — strip dangling references to skipped/stubbed
+      // Selenium infrastructure classes. These survived the BaseWeb body
+      // because they're statically referenced inside the @BeforeMethod /
+      // @AfterMethod bodies, but the source files were correctly skipped
+      // (DriverManager, BrowserFactory, TargetFactory) or stubbed (Allure*,
+      // ConfigurationManager) so nothing imports them at compile time.
+      // Playwright fixtures replace ALL of this — driver lifecycle is the
+      // page fixture's job; per-test setup is empty by default.
+      if (/^DriverManager\.(?:setDriver|getDriver|quit|remove)/.test(t)) return false;
+      if (/^DriverManager\s*\./.test(t)) return false;
+      if (/^new\s+(?:Target|Browser|WebDriver|Driver)Factory\s*\(/.test(t)) return false;
+      if (/^\w+\s*=\s*new\s+(?:Target|Browser|WebDriver|Driver)Factory\s*\(/.test(t)) return false;
+      if (/^(?:const|let|var)\s+\w+\s*=\s*new\s+(?:Target|Browser|WebDriver|Driver)Factory\s*\(/.test(t)) return false;
+      if (/^AllureManager\s*\./.test(t)) return false;
+      if (/^Allure\w*Listener\s*\./.test(t)) return false;
+      if (/^Allure\w*Reporter\s*\./.test(t)) return false;
+      if (/^ConfigurationManager\s*\./.test(t)) return false;
+      // `this.page.get(...)` and `page.get(...)` are Java idioms that
+      // converted halfway — Playwright has no `.get()`. Drop them; users
+      // who want a baseline page.goto can wire it from process.env.
+      if (/^this\.page\.get\s*\(/.test(t)) return false;
+      if (/^page\.get\s*\(/.test(t)) return false;
+
       // Keep `driver.quit();` — it gets rewritten to a no-op by apiMap.
       return true;
     })

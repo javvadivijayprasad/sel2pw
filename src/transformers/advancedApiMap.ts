@@ -263,6 +263,23 @@ function rewriteActions(
     (_m, el) => `await ${normaliseLocatorRef(el)}.click({ button: 'right' });`,
   );
 
+  // sendKeys(el, value)            -> await el.fill(value)
+  // sendKeys(el, value).perform() -> await el.fill(value)
+  // The Selenium Actions.sendKeys docs say each char is typed individually, but
+  // 99% of real usage just wants to fill a field. We map to .fill() because
+  // that is the canonical Playwright primitive; if a user needs real keystroke-
+  // by-keystroke (e.g. for IME / contenteditable bug triggers) they will
+  // catch the difference in code review and swap to .pressSequentially().
+  out = out.replace(
+    /new\s+Actions\s*\(\s*[\w.()]+\s*\)\.sendKeys\s*\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)(?:\.perform\s*\(\s*\)\s*)?;/g,
+    (_m, el, value) =>
+      `await ${normaliseLocatorRef(el)}.fill(${value});`,
+  );
+
+  // sendKeys(value) on a chain that already targets an element (rare; user-built
+  // chains like `new Actions(driver).click(el).sendKeys("X").perform();`).
+  // Leave that one to manual review — too many edge cases to translate confidently.
+
   // Anything else still using `new Actions(...)` is too ambiguous to translate.
   if (/\bnew\s+Actions\s*\(/.test(out)) {
     warnings.push({
