@@ -4,6 +4,33 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [2.0.1] — Human-readable file mapping table (`FILE_MAPPING.md`)
+
+Patch release. Adds a per-conversion `FILE_MAPPING.md` next to the existing `conversion-result.json` and `CONVERSION_REVIEW.md`. Same data the JSON has carried since 2.0.0 — just rendered as a one-glance Markdown table grouped by status (converted / aggregated / skipped / stubbed / failed) so a human can answer "what became what" without running `jq`.
+
+### Added
+
+- **`FILE_MAPPING.md`** emitted next to `conversion-result.json` in every conversion. Sections only render when non-empty so small projects don't get a wall of empty headings.
+  - **Converted** — 1:1 Java -> TS mappings (page objects, test classes, base / fixtures).
+  - **Aggregated into a shared file** — Java enums / exceptions / records / POJOs that merged into `types/enums.ts`, `types/errors.ts`, or `data/models.ts`. The output column shows the destination file each source landed in (previously buried in the JSON as a `status: failed` row with a confusing `(no file emitted)`).
+  - **Skipped (no equivalent needed)** — Selenium-only infrastructure (DriverManager, BrowserFactory, TargetFactory, Owner-library `@Config` interfaces). Shows the Playwright replacement inline (e.g. `Playwright fixtures + playwright.config.ts (built-in)`) so the row reads as a win, not a gap. **These are wins, not gaps.**
+  - **Stubbed (manual migration required)** — legacy utilities routed to `tests/_legacy-stubs/`. Each row is a hand-edit checklist item.
+  - **Failed (review)** — true emitter gaps. Empty on real production frameworks today.
+
+### Fixed
+
+- Infrastructure classes (`DriverManager.java`, `BrowserFactory.java`, `TargetFactory.java`) and Owner-config interfaces no longer appear as "failed" in the human-facing report. They were always classified correctly internally (sourceKind `infrastructure` / `owner-config`) but the `conversion-result.json` representation used `status: failed` because no per-file output gets emitted. `FILE_MAPPING.md` re-categorises them as `skipped` with an inline pointer to the Playwright replacement.
+
+### Not breaking
+
+Semver patch. `conversion-result.json` shape unchanged. CLI flags unchanged. No behavioural changes to the conversion itself — only the human-facing reporting surface gains a file.
+
+### Why a separate Markdown file (not appending to `CONVERSION_REVIEW.md`)
+
+`CONVERSION_REVIEW.md` is *per-item* oriented — one row per warning / manual item / info note. `FILE_MAPPING.md` is *per-source-file* oriented. The two views answer different questions and have different audiences (CI scripts that want "which files need attention" vs. demo viewers / stakeholders that want "what became what"). Keeping them as separate files lets each stay focused.
+
+---
+
 ## [2.0.0] — Canonical Playwright structure is now the default. 45% TS error reduction across the validation matrix. Real-world OSS Selenium framework converts to zero TS errors out of the box.
 
 First major bump since 1.0. Two pieces of work landed together: the **canonical Playwright project structure is now the default** (was opt-in in 1.x), and a sweep of consolidation patches that improve output quality regardless of layout.

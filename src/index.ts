@@ -27,6 +27,7 @@ import { detectAndEmitAuthSetup } from "./post/authSetupGenerator";
 import { insertTodoMarkers } from "./post/todoMarkers";
 import { writeMigrationNotes } from "./reports/migrationNotes";
 import { writeConversionResult } from "./reports/conversionResult";
+import { writeFileMapping } from "./reports/fileMapping";
 import { extractPageObject as extractPageObjectIR } from "./parser/javaAst";
 import { emitPageBag } from "./emitters/pageBagEmitter";
 import { detectSourceStack, SourceStack } from "./scanner/stackDetector";
@@ -567,7 +568,7 @@ export async function convert(opts: ConvertOptions): Promise<{
     await writeReviewReport(outputDir, summary);
     await writeMigrationNotes(outputDir, inputDir, summary);
     // Phase 10: structured per-file outcome JSON for downstream tooling.
-    await writeConversionResult({
+    const conversionResultArgs = {
       inputDir,
       outputDir,
       sourceStack: stack,
@@ -575,7 +576,10 @@ export async function convert(opts: ConvertOptions): Promise<{
       convertedFiles: postFiles,
       warnings,
       summary,
-    });
+    };
+    await writeConversionResult(conversionResultArgs);
+    // v2.0.1: human-readable Java -> TS mapping table next to the JSON.
+    await writeFileMapping(conversionResultArgs);
 
     if (opts.validateOutput) {
       const tsc = await tscValidate(outputDir);
