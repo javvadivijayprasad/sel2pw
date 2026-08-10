@@ -160,6 +160,38 @@ function stripJavaDriverBoilerplate(body: string): string {
     /^\s*driver\.manage\(\)\.timeouts\(\)\.\w+\([^)]*\)(?:\.\w+\([^)]*\))*\s*;\s*$/,
     /^\s*if\s*\(\s*driver\s*!=\s*null\s*\)\s*driver\.quit\(\)\s*;\s*$/,
     /^\s*driver\.manage\(\)\.window\(\)\.fullscreen\(\)\s*;\s*$/,
+    // v2.0.3 — Sauce Labs cloud APIs. These have no Playwright equivalent
+    // (Playwright uses `projects` config + env vars for cloud running) so
+    // they get stripped from @BeforeMethod / @AfterMethod hooks the same
+    // way the ChromeDriver setup lines are. Covers the shapes emitted
+    // AFTER the Java-idiom pass (which strips the leading `SauceOptions`
+    // / `MutableCapabilities` / `ChromeOptions` / `SauceSession` type
+    // declarations and prefixes with `const`).
+    // The `(?:const\s+|[A-Z]\w*(?:<[^>]+>)?\s+)?` prefix matches either the
+    // post-transform `const` form or the raw Java `Type varname` form (an
+    // uppercase-starting identifier followed by whitespace, optionally with
+    // a generic type parameter). Runs early enough that both shapes reach it.
+    /^\s*(?:const\s+|[A-Z]\w*(?:<[^>]+>)?\s+)?\w+\s*=\s*SauceOptions\.\w+\(\).*;\s*$/,
+    /^\s*(?:const\s+|[A-Z]\w*(?:<[^>]+>)?\s+)?\w+\s*=\s*new\s+SauceSession\s*\([^)]*\)\s*;\s*$/,
+    /^\s*(?:const\s+|[A-Z]\w*(?:<[^>]+>)?\s+)?\w+\s*=\s*session\.start\s*\(\s*\)\s*;\s*$/,
+    /^\s*session\.stop\s*\(.*\)\s*;\s*$/,
+    /^\s*(?:const\s+|[A-Z]\w*(?:<[^>]+>)?\s+)?\w+\s*=\s*new\s+MutableCapabilities\s*\([^)]*\)\s*;\s*$/,
+    /^\s*(?:const\s+|[A-Z]\w*(?:<[^>]+>)?\s+)?\w+\s*=\s*new\s+ChromeOptions\s*\([^)]*\)\s*;\s*$/,
+    /^\s*(?:const\s+|[A-Z]\w*(?:<[^>]+>)?\s+)?\w+\s*=\s*new\s+FirefoxOptions\s*\([^)]*\)\s*;\s*$/,
+    /^\s*(?:const\s+|[A-Z]\w*(?:<[^>]+>)?\s+)?\w+\s*=\s*new\s+RemoteWebDriver\s*\([^)]*\)\s*;\s*$/,
+    // Sauce capability setters — `sauceOptions.setCapability("username", System.getenv(...))`
+    // etc. `setCapability` is a Selenium-only method; nothing in a Playwright
+    // TS file calls it legitimately, so a broad strip is safe. Uses `.*\)` to
+    // survive nested parens (e.g. `setCapability("name", System.getenv("KEY"))`).
+    /^\s*\w+\.setCapability\s*\(.*\)\s*;\s*$/,
+    // Sauce job-result reporter — driver.executeScript("sauce:job-result=" + status)
+    /^\s*driver\.executeScript\s*\(\s*"sauce:.*\)\s*;\s*$/,
+    // Sauce endpoint URL construction — `URL url = new URL("https://ondemand.saucelabs.com/...")`
+    /^\s*(?:const\s+|[A-Z]\w*(?:<[^>]+>)?\s+)?\w+\s*=\s*new\s+URL\s*\(\s*"https?:\/\/[^"]*saucelabs\.com[^"]*"\s*\)\s*;\s*$/,
+    // Sauce/TestNG-only local — `String status = result.isSuccess() ? ...` used
+    // to build the job-result argument. Once the executeScript line is stripped
+    // the local is unused, so drop it too.
+    /^\s*(?:const\s+|String\s+)?\w+\s*=\s*result\.isSuccess\s*\([^)]*\).*;\s*$/,
   ];
   return body
     .split("\n")

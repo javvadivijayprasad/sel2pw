@@ -92,13 +92,28 @@ export function emitTestClass(
     const transformed = transformMethodBody(method.rawBody, sourceFilePath);
     warnings.push(...transformed.warnings);
 
+    // v2.0.2 — when the Java test method has positional params (TestNG
+    // @DataProvider, parametrised tests), Playwright's test() callback only
+    // takes a fixtures bag, not arbitrary positional args. Leaving the Java
+    // params in the signature produced TS2345 ("Expected 4 or more, but got
+    // 2") on every parametrised test. Drop them from the signature and emit
+    // a TODO comment so the user knows what was elided.
     const tsParams = method.params
       .map((p) => `${p.name}: ${javaTypeToTs(p.javaType)}`)
       .join(", ");
-    const fixtureSig = tsParams ? `{ page }, ${tsParams}` : `{ page }`;
+    const fixtureSig = "{ page }";
+    const droppedParamsComment =
+      tsParams.length > 0
+        ? `  // TODO(sel2pw): Java test had positional params (${tsParams}). ` +
+          "Playwright tests are functional — convert to a parameterised loop: " +
+          "`for (const row of dataProvider()) { test(`name [${row.x}]`, async ({ page }) => { ... }) }`."
+        : "";
 
     if (method.groups && method.groups.length) {
       lines.push(`  // groups: ${method.groups.join(", ")}`);
+    }
+    if (droppedParamsComment) {
+      lines.push(droppedParamsComment);
     }
     if (method.javadoc) {
       for (const docLine of method.javadoc.split("\n")) {
@@ -107,7 +122,16 @@ export function emitTestClass(
     }
 
     lines.push(`  test(${JSON.stringify(title)}, async (${fixtureSig}) => {`);
-    const body = rewriteAwaitOnPageObjectCalls(transformed.body, ir.pageObjectTypes);
+    let body = rewriteAwaitOnPageObjectCalls(transformed.body, ir.pageObjectTypes);
+    // v2.0.2 — late-pass `this.page` → `page` inside test bodies. Spec files
+    // are functional, not class-based, so `this` doesn't exist here. Also
+    // catch the `this.page.navigate().to(url)` / `this.page.getTitle()`
+    // Selenium-idiom shapes that the apiMap-then-idiomMap order leaves
+    // behind (driver -> this.page in idiomMap, then apiMap's navigate/title
+    // rules already fired). Single pass, applied AFTER the page-object
+    // await-rewrite so we don't accidentally collapse `this.<page>.method()`
+    // PageObject-method references.
+    body = rewriteThisPageInSpecBody(body);
     lines.push(dedentAndIndent(body, "    "));
     lines.push(`  });`);
     lines.push("");
@@ -129,14 +153,14 @@ function mapLifecycle(kind: string): string {
     case "BeforeMethod":
     case "BeforeTest":
       return "test.beforeEach";
-    case "BeforeClass":
-    case "BeforeSuite":
-      return "test.beforeAll";
     case "AfterMethod":
     case "AfterTest":
       return "test.afterEach";
+    case "BeforeClass":
+    case "BeforeAll":
+      return "test.beforeAll";
     case "AfterClass":
-    case "AfterSuite":
+    case "AfterAll":
       return "test.afterAll";
     default:
       return "test.beforeEach";
@@ -144,9 +168,42 @@ function mapLifecycle(kind: string): string {
 }
 
 /**
- * Prefix `await` to instance-method calls on Page Object variables, e.g.
- *   loginPage.open(...)        ->   await loginPage.open(...)
- *   homePage.getWelcomeText()  ->   await homePage.getWelcomeText()
+ * v2.0.2 â rewrite `this.page.X` shapes that leak into test spec bodies.
+ *
+ * Why this lives at the testClassEmitter level (not in bodyTransformer):
+ *   bodyTransformer is also called for Page Object methods, where
+ *   `this.page` is a legitimate class field. Only in test-spec bodies is
+ *   `this` undefined (Playwright tests are functional). Keeping this
+ *   rewrite at the emitter level scopes it correctly.
+ *
+ * Shapes covered (each was a real error class in the saucelabs-training/
+ * demo-java validation run on v2.0.1):
+ *   - `this.page.navigate().to(X)`     -> `await page.goto(X)`
+ *   - `this.page.getTitle()`           -> `await page.title()`
+ *   - any other `this.page.<rest>`     -> `page.<rest>`  (catches
+ *                                          `this.page.locator(...)`,
+ *                                          `this.page.click(...)`, etc.)
+ */
+function rewriteThisPageInSpecBody(body: string): string {
+  let out = body;
+  // Specific shapes first â they emit `await` so we run them before the
+  // generic `this.page` strip.
+  out = out.replace(
+    /this\.page\.navigate\(\)\.to\(([^)]*)\)/g,
+    "await page.goto($1)",
+  );
+  out = out.replace(
+    /this\.page\.getTitle\(\s*\)/g,
+    "await page.title()",
+  );
+  // Then strip the bare `this.` prefix from anything that's left.
+  out = out.replace(/(?<![\w$.])this\.page(?![\w$])/g, "page");
+  return out;
+}
+
+/**
+ * Prepend `await ` to bare page-object method calls (e.g. `loginPage.go()` ->
+ * `await loginPage.go()`) so the emitted spec doesn't leak un-awaited promises.
  *
  * Skips calls already preceded by `await ` to avoid double-await.
  */
@@ -158,7 +215,7 @@ function rewriteAwaitOnPageObjectCalls(
   for (const pt of pageObjectTypes) {
     const inst = toCamelCase(pt);
     const re = new RegExp(`(^|[^\\w.])(?<!await\\s)(${inst}\\.\\w+\\s*\\()`, "gm");
-    out = out.replace(re, (_m, pre: string, call: string) => `${pre}await ${call}`);
+    out = out.replace(re, (_m, pre, call) => `${pre}await ${call}`);
   }
   return out;
 }

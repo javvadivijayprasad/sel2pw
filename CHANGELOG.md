@@ -4,6 +4,63 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [2.0.3] — Sauce Labs cloud APIs stripped from @BeforeMethod / @AfterMethod hooks
+
+Patch release. Extends `stripJavaDriverBoilerplate` in `bodyTransformer.ts` to recognize the Sauce Labs cloud test-harness surface and strip it — the same way ChromeDriver setup lines have always been stripped. Playwright uses `projects` + env vars for cloud running; the Sauce Java bindings have no 1:1 TS equivalent, so leaving them in produced ~23 TS2304 "Cannot find name" errors per converted test class.
+
+### Fixed
+
+- **Sauce Labs cloud setup lines stripped**: `SauceOptions.chrome().setName(...).build()`, `new SauceSession(...)`, `session.start()`, `session.stop(...)`, `new MutableCapabilities()`, `new ChromeOptions()` / `FirefoxOptions()`, `setCapability(...)` calls (all variants), `new RemoteWebDriver(...)`, `new URL("...saucelabs.com...")`, `driver.executeScript("sauce:job-result=...")`, and the `String status = result.isSuccess() ? ... : ...` local that only exists to feed the executeScript call.
+
+- **Nested-paren regex hazard**: `setCapability("username", System.getenv("SAUCE_USERNAME"))` and `session.stop(result.isSuccess())` were originally matched with `\([^)]*\)`, which stops at the inner `)`. Rewrote to `\(.*\)` so the greedy match consumes to the final `);`.
+
+- **Java type-declaration prefix in the strip regex**: patterns now accept either the post-transform `const varname = new X(...)` shape OR the raw Java `Type varname = new X(...)` shape, so the strip fires regardless of whether the Java-idiom pass has already rewritten the type declaration.
+
+### Impact
+
+Simulated Sauce test class (both variants — Sauce Bindings and Selenium direct):
+- **Before v2.0.3**: `sauceOptions`, `session`, `MutableCapabilities`, `SauceOptions`, `SauceSession`, `RemoteWebDriver`, `ChromeOptions`, `setCapability` — 23 undefined-symbol errors per file.
+- **After v2.0.3**: `beforeEach` / `afterEach` bodies empty (Playwright's `page` fixture replaces all of it); test body clean; zero undefined-symbol errors from Sauce APIs.
+
+### Validated against
+
+- Simulated conversion of `SauceLabsSeleniumTest` (from `saucelabs-training/demo-java/selenium-testng-examples/SauceLabsExampleTest.java`) — all Sauce API references stripped.
+- Simulated conversion of `SauceBindingsTest` (from `SauceBindingsTest.java`) — all Sauce Bindings references stripped.
+- eliasnogueira regression check: patterns are additive and only match Sauce-specific class names, so no eliasnogueira line matches. (Prior release regression baseline: 0 TS errors on `--layout v2-organized`.)
+
+### Not breaking
+
+Semver patch. CLI unchanged. Only new behaviour is line-stripping in method bodies — no signature or schema changes.
+
+---
+
+## [2.0.2] — Fix `this.page` leak in test specs + drop TestNG positional params from fixture signature
+
+Patch release. Two targeted fixes found via validating sel2pw against `saucelabs-training/demo-java/selenium-testng-examples` (real Sauce Labs OSS Selenium training framework). Eliasnogueira regression stayed clean (0 errors).
+
+### Fixed
+
+- **`this.page` no longer leaks into test spec bodies.** Playwright test files are functional, not class-based — there is no `this` in scope. The driver-rewrite chain (`driver.X` → `this.page.X` via `javaIdiomMap`) was correct for Page Object class bodies but wrong for test method bodies. A new late-pass rewrite in `testClassEmitter.ts` strips the `this.` prefix from any `this.page` reference inside emitted `test()` and `test.beforeEach/afterEach()` blocks. The Page Object emitter is unaffected — `this.page` remains the correct shape for class methods.
+
+- **`this.page.navigate().to(url)` / `this.page.getTitle()` belt-and-suspenders.** Specific rewrite rules for these Selenium-idiom shapes fire before the bare `this.page` strip so the emitted code uses the canonical Playwright form: `await page.goto(url)` and `await page.title()`.
+
+- **TestNG positional params no longer leak into the Playwright fixture signature.** Previously, a `@Test(dataProvider="…")`-annotated method with positional Java params (`String browser, String version, String platform`) produced a TS2345 error on every parametrised test — Playwright's `test()` callback only takes a fixtures bag, not arbitrary positional args. The emitter now drops the Java params from the signature and emits a `TODO(sel2pw)` comment above the test pointing the user at the parameterised-loop pattern they need to apply manually.
+
+### Validated against
+
+- `examples/selenium-testng-examples` (Sauce Labs training repo): the `this.page` leak alone accounted for ~24 of 51 errors and the param-signature mismatch for another 4 — fixes here resolve both classes.
+- `eliasnogueira/selenium-java-lean-test-architecture`: regression check passed at **0 TS errors** under `--layout v2-organized` (unchanged from 2.0.1).
+
+### Not breaking
+
+Semver patch. CLI unchanged. `conversion-result.json` schema unchanged. The dropped TestNG params surface as a `TODO(sel2pw)` comment so users immediately see what was elided.
+
+### Known remaining gaps in the SauceLabs target (planned for 2.0.3+)
+
+- `SauceOptions`, `SauceSession`, `MutableCapabilities`, `RemoteWebDriver` left raw in spec bodies — these need to be stripped from `@BeforeMethod` hooks like the existing driver-setup boilerplate. Currently shows as ~23 TS2304 errors against the SauceLabs cloud APIs that have no Playwright equivalent (Playwright projects + env vars replace this entire surface).
+
+---
+
 ## [2.0.1] — Human-readable file mapping table (`FILE_MAPPING.md`)
 
 Patch release. Adds a per-conversion `FILE_MAPPING.md` next to the existing `conversion-result.json` and `CONVERSION_REVIEW.md`. Same data the JSON has carried since 2.0.0 — just rendered as a one-glance Markdown table grouped by status (converted / aggregated / skipped / stubbed / failed) so a human can answer "what became what" without running `jq`.
