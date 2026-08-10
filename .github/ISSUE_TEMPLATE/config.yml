@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & discussions
+    url: https://github.com/javvadivijayprasad/sel2pw/discussions
+    about: Ask a question, share a migration story, or discuss a design idea. Please use Discussions rather than opening an issue for open-ended questions.
+  - name: Security disclosure
+    url: https://github.com/javvadivijayprasad/sel2pw/security/policy
+    about: For security issues, please follow the private disclosure process in SECURITY.md instead of opening a public issue.
