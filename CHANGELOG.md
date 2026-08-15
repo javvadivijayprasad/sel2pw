@@ -4,6 +4,38 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [2.0.4] — `--dry-run` now prints the FILE_MAPPING preview to stdout
+
+Patch release. The `--dry-run` CLI flag has existed since 1.x but only printed the summary counts and a "no files written" line — you had to run without dry-run and open FILE_MAPPING.md to actually see what would land where. v2.0.4 makes dry-run useful for its intended purpose: safely previewing a migration without touching the filesystem.
+
+### Added
+
+- **`convert(...)` returns `dryRunPreview?: string`** when called with `opts.dryRun`. Markdown-formatted, identical to the on-disk `FILE_MAPPING.md` content (same builder, single source of truth). Undefined for non-dry-run calls so callers can't accidentally print the preview during a write run.
+
+- **CLI dry-run output now includes the mapping preview** — grouped tables of "would emit" (converted), "would aggregate" (enums/exceptions/records into shared files), "would skip" (Selenium-only infrastructure Playwright handles natively), and "would stub" (utilities requiring manual migration). Full source-Java → output-TS mapping for every scanned file, before any file is written.
+
+- **Preview suppressed under `--diff`** so the two flags compose sensibly: `--diff` already prints per-file unified diffs and the mapping table would be duplicative noise on top.
+
+### Fixed
+
+- **`--dry-run` messaging clarified**: "Dry run — no files written. Rerun without --dry-run to apply." (Was just "Dry run — no files written." with no hint of the next step.)
+
+### Not breaking
+
+Semver patch. The `dryRunPreview` field is additive on the `convert()` return type. All existing callers (CLI, tests, downstream integrations) continue to work; they simply don't destructure the new field.
+
+### Why this release, why now
+
+Referenced in the JOSS interim-cadence plan (§7.1, September 2026 entry) as a low-risk, high-visibility feature that keeps shipping velocity healthy during the Software Impacts review window. Delivered ahead of schedule.
+
+### Validated against
+
+- Unit test: `convert(...)` with `dryRun: true` returns a populated `dryRunPreview`, creates zero files on disk, and returns the same `files[]` array as a real run would emit.
+- End-to-end CLI test: `sel2pw convert examples/validation-batch-v2/sources/eliasnogueira-lean --out /tmp/no-write --dry-run` prints the full mapping table and creates ZERO files at the `--out` path.
+- Regression check: same input WITHOUT `--dry-run` writes all expected outputs (`FILE_MAPPING.md`, `conversion-result.json`, `CONVERSION_REVIEW.md`, `MIGRATION_NOTES.md`, `pages/`, `tests/`, `playwright.config.ts`, `package.json`, `tsconfig.json`) — no regression from moving `conversionResultArgs` construction outside the write branch.
+
+---
+
 ## [2.0.3] — Sauce Labs cloud APIs stripped from @BeforeMethod / @AfterMethod hooks
 
 Patch release. Extends `stripJavaDriverBoilerplate` in `bodyTransformer.ts` to recognize the Sauce Labs cloud test-harness surface and strip it — the same way ChromeDriver setup lines have always been stripped. Playwright uses `projects` + env vars for cloud running; the Sauce Java bindings have no 1:1 TS equivalent, so leaving them in produced ~23 TS2304 "Cannot find name" errors per converted test class.

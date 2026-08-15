@@ -27,7 +27,7 @@ import { detectAndEmitAuthSetup } from "./post/authSetupGenerator";
 import { insertTodoMarkers } from "./post/todoMarkers";
 import { writeMigrationNotes } from "./reports/migrationNotes";
 import { writeConversionResult } from "./reports/conversionResult";
-import { writeFileMapping } from "./reports/fileMapping";
+import { writeFileMapping, renderFileMapping } from "./reports/fileMapping";
 import { extractPageObject as extractPageObjectIR } from "./parser/javaAst";
 import { emitPageBag } from "./emitters/pageBagEmitter";
 import { detectSourceStack, SourceStack } from "./scanner/stackDetector";
@@ -133,6 +133,13 @@ export interface ConvertOptions {
 export async function convert(opts: ConvertOptions): Promise<{
   summary: ConversionSummary;
   files: ConvertedFile[];
+  /**
+   * v2.0.4 — populated only when `opts.dryRun` is true. Markdown-formatted
+   * preview identical to what `FILE_MAPPING.md` would contain if this were a
+   * real run. Undefined for non-dry-run calls so downstream code doesn't
+   * accidentally print the preview on write mode.
+   */
+  dryRunPreview?: string;
 }> {
   const inputDir = path.resolve(opts.inputDir);
   const outputDir = path.resolve(opts.outputDir);
@@ -563,20 +570,24 @@ export async function convert(opts: ConvertOptions): Promise<{
     postFiles = await prettyPrint(postFiles);
   }
 
+  // v2.0.4 — always build the conversion-result args (used for both dry-run
+  // preview generation and real writes). Cheap to build; the write is what
+  // costs I/O and that's what gets gated.
+  const conversionResultArgs = {
+    inputDir,
+    outputDir,
+    sourceStack: stack,
+    scannedFiles: javaFiles,
+    convertedFiles: postFiles,
+    warnings,
+    summary,
+  };
+
   if (!opts.dryRun) {
     await emitProject(outputDir, postFiles, summary, templatesDir);
     await writeReviewReport(outputDir, summary);
     await writeMigrationNotes(outputDir, inputDir, summary);
     // Phase 10: structured per-file outcome JSON for downstream tooling.
-    const conversionResultArgs = {
-      inputDir,
-      outputDir,
-      sourceStack: stack,
-      scannedFiles: javaFiles,
-      convertedFiles: postFiles,
-      warnings,
-      summary,
-    };
     await writeConversionResult(conversionResultArgs);
     // v2.0.1: human-readable Java -> TS mapping table next to the JSON.
     await writeFileMapping(conversionResultArgs);
@@ -604,7 +615,14 @@ export async function convert(opts: ConvertOptions): Promise<{
     }
   }
 
-  return { summary, files: postFiles };
+  // v2.0.4 — when dry-run, render the mapping preview so the CLI can print
+  // it to stdout without needing to touch the filesystem. Same content the
+  // user would see if they opened FILE_MAPPING.md after a real run.
+  const dryRunPreview = opts.dryRun
+    ? renderFileMapping(conversionResultArgs)
+    : undefined;
+
+  return { summary, files: postFiles, dryRunPreview };
 }
 
 export async function analyze(inputDir: string): Promise<{

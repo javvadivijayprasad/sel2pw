@@ -189,11 +189,11 @@ function rewriteThisPageInSpecBody(body: string): string {
   // Specific shapes first â they emit `await` so we run them before the
   // generic `this.page` strip.
   out = out.replace(
-    /this\.page\.navigate\(\)\.to\(([^)]*)\)/g,
+    /this\.page\.navigate\(\)\.to\(([^)]*)\)/g,
     "await page.goto($1)",
   );
   out = out.replace(
-    /this\.page\.getTitle\(\s*\)/g,
+    /this\.page\.getTitle\(\s*\)/g,
     "await page.title()",
   );
   // Then strip the bare `this.` prefix from anything that's left.

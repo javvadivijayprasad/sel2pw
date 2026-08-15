@@ -101,7 +101,7 @@ program
         }
         llmFallback = { provider, apiKey, model: opts.llmModel };
       }
-      const { summary, files } = await convert({
+      const { summary, files, dryRunPreview } = await convert({
         inputDir,
         outputDir: opts.out,
         templatesDir: opts.templates ?? path.resolve(__dirname, "..", "templates"),
@@ -132,7 +132,16 @@ program
       }
       printSummary(summary);
       if (opts.dryRun) {
-        console.log(chalk.yellow("\nDry run — no files written."));
+        // v2.0.4 — print the FILE_MAPPING preview so the user can see WHAT
+        // would land where without opening any file. Suppressed when --diff
+        // is set because --diff already printed per-file unified diffs and
+        // the mapping table would be noise.
+        if (dryRunPreview && !opts.diff) {
+          console.log("");
+          console.log(chalk.cyan("─── Preview: would emit ───"));
+          console.log(dryRunPreview);
+        }
+        console.log(chalk.yellow("Dry run — no files written. Rerun without --dry-run to apply."));
       } else {
         console.log(
           chalk.green(
