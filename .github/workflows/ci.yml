@@ -15,7 +15,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         node: [18, 20, 22]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
@@ -42,7 +42,7 @@ jobs:
     # the coverage report is actually consumed (Codecov, PR comments).
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm }
       - run: npm ci
