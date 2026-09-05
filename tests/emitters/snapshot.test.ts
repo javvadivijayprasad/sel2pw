@@ -33,11 +33,13 @@ describe("emitter snapshots — bundled sample", () => {
     // Order-stable
     // Phase 2 added tests/fixtures.ts (auto-emitted from BaseTest),
     // Phase 3 added MIGRATION_NOTES.md alongside the review report,
-    // Phase 10.3 added conversion-result.json (structured stats writeback).
+    // Phase 10.3 added conversion-result.json (structured stats writeback),
+    // v2.0.1 added FILE_MAPPING.md (human-readable Java -> TS mapping table).
     expect(list.sort()).toEqual(
       [
         ".gitignore",
         "CONVERSION_REVIEW.md",
+        "FILE_MAPPING.md",
         "MIGRATION_NOTES.md",
         "README.md",
         "conversion-result.json",

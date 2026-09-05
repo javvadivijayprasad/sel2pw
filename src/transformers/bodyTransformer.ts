@@ -44,6 +44,17 @@ export function transformMethodBody(
   //     provides everything Selenium needed driver setup for.
   body = stripJavaDriverBoilerplate(body);
 
+  // 2a) Hamcrest matcher rewrites (`assertThat(x, matcher)` two-arg form).
+  // MUST run before apiMap, because apiMap's AssertJ-style rule
+  // (`\bassertThat\s*\(` → `expect(`) is unconditional and rewrites BOTH
+  // the AssertJ 1-arg form (`assertThat(x).chain`) AND the Hamcrest 2-arg
+  // form. Once that fires, hamcrest's own regex (`\bassertThat\s*\(`)
+  // finds no matches and the matcher expressions leak into the output
+  // (`expect(items, hasItem("x"))`). Running hamcrest first converts the
+  // 2-arg form to full `expect(x).toContain(y)` shape; any remaining
+  // `assertThat(x)` calls are AssertJ 1-arg form and apiMap handles them.
+  body = applyHamcrestRewrites(body);
+
   // 2) API rewrites — basic mappings.
   const api = applyApiRewrites(body);
   body = api.body;
@@ -67,9 +78,9 @@ export function transformMethodBody(
   body = idiom.body;
   warnings.push(...idiom.warnings);
 
-  // 3) Assertions: TestNG/JUnit `Assert.*` then Hamcrest `assertThat(...)`.
+  // 3) TestNG/JUnit `Assert.*` rewrites. (Hamcrest already ran at step 2a
+  // above — see the comment there for why the order was inverted in v2.0.6.)
   body = applyAssertionRewrites(body);
-  body = applyHamcrestRewrites(body);
 
   // 4) Java -> TS cosmetic.
   body = body.replace(/\bSystem\.out\.println\s*\(/g, "console.log(");

@@ -282,6 +282,18 @@ export function applyApiRewrites(body: string): {
 } {
   const notes: string[] = [];
   let out = body;
+
+  // v2.0.5 — normalise `this.driver.X` to `driver.X` before the pattern
+  // sweep runs. Every rule below is written against the bare `driver.` shape
+  // and uses `\bdriver\.` to match. That word-boundary happily matches
+  // inside `this.driver.X`, but the rule's replacement drops the `driver.`
+  // part and leaves the `this.` prefix stranded — turning `this.driver.get(url)`
+  // into `this.await this.page.goto(url)` (line 11 of ui-api-bookknight's
+  // search-pof.page.ts pre-fix) and `this.driver.quit()` into
+  // `this.// driver.quit() — handled by Playwright fixture` (line 70 same
+  // file). Stripping the prefix here in one pass fixes both.
+  out = out.replace(/\bthis\.driver\b/g, "driver");
+
   for (const r of API_REWRITES) {
     if (r.pattern.test(out) && r.note) notes.push(r.note);
     // Reset lastIndex since regex literals with /g are stateful per-call

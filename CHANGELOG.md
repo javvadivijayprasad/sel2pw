@@ -4,6 +4,65 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [2.0.6] — README migration-patterns reference expanded + Hamcrest matcher ordering fix
+
+Docs-only patch. The README's "What it converts" section grew from a single 20-row table into a **10-subsection categorised reference** with ~90 concrete Selenium/TestNG → Playwright mappings. Covers everything the pipeline actually does, including the v2.x additions that weren't in the older docs.
+
+### Added
+
+- **Navigation and page-level actions** — 9 mappings (`driver.get`, `.navigate().back/forward/refresh()`, `getCurrentUrl`, `getTitle`, `getPageSource`, `close/quit`).
+- **Locators** — 12 mappings covering every `By.*` variant plus `@FindBy` / `@FindBys` / `@FindAll`.
+- **Element interactions** — 16 mappings including `Select` dropdown, `Actions` chain (`moveToElement`, `dragAndDrop`, `sendKeys`), and `JavascriptExecutor`.
+- **Waiting** — 5 mappings clarifying that Playwright's auto-wait replaces `WebDriverWait`, `ExpectedConditions`, and `implicitlyWait`.
+- **Assertions** — 10 mappings across TestNG (`Assert.assertX`), Hamcrest (`assertThat(x, matcher)`), and AssertJ (`assertThat(x).isEqualTo(y)`).
+- **Test lifecycle (TestNG)** — 10 mappings covering `@Test` (with `description`, `groups`, `dataProvider`), all four Before/After annotations, `BaseTest`, and `test.describe` wrapping.
+- **Page Object Model** — 5 mappings including the inheritance-preservation and field/method-collision auto-rename behaviours introduced in v2.0.0, plus the `this.driver` normalisation from v2.0.5.
+- **Infrastructure that Playwright replaces** — 8 mappings for the Selenium classes sel2pw correctly skips (DriverManager, BrowserFactory, TargetFactory, WebDriverManager, Owner `@Config`, Sauce Labs cloud harness), with the Playwright replacement noted for each.
+- **Aggregated shared files (v2.0+)** — 4 rows explaining how Java enums land in `types/enums.ts`, exceptions in `types/errors.ts`, records/POJOs in `data/models.ts`, and untranslatable utilities in `tests/_legacy-stubs/`.
+- **CLI outputs** — 4 rows summarising `FILE_MAPPING.md` / `CONVERSION_REVIEW.md` / `MIGRATION_NOTES.md` / `conversion-result.json`, with a pointer to `--dry-run` for previewing them without writing files.
+
+### Not breaking
+
+Semver patch. Zero code changes — `src/` untouched. `git diff --stat` shows only `README.md`, `CHANGELOG.md`, and `package.json`. Bundled fixtures and their expected outputs unchanged.
+
+### Fixed (bonus — pre-existing bug caught by local `npm test`)
+
+- **Hamcrest matcher rewrites now fire correctly** through the full pipeline. The v2.0.0 AssertJ chain rule in `apiMap.ts` unconditionally rewrites `assertThat(` → `expect(`, which fires on both the AssertJ 1-arg form (`assertThat(x).chain`) AND the Hamcrest 2-arg form (`assertThat(x, matcher)`). By the time `applyHamcrestRewrites` ran in step 3, its regex (`\bassertThat\s*\(`) matched nothing and the raw matcher expressions leaked into the output as `expect(items, hasItem("x"))`. Reordering so Hamcrest runs at step 2a (before apiMap) resolves 3 previously-failing snapshot tests: `hasItem`, `containsInAnyOrder`, `hasSize`, `equalToIgnoringCase`, `containsString`, `greaterThan`, `lessThanOrEqualTo`, and `not(empty())` all now produce proper Playwright `expect(...)` matchers.
+
+- **Verified through full pipeline** (`transformMethodBody`) on 10 test cases: 8 Hamcrest 2-arg forms produce their expected matcher shape (`toContain`, `toEqual(expect.arrayContaining(...))`, `toHaveLength`, `toBeGreaterThan`, etc.); 2 AssertJ 1-arg forms (`assertThat(x).isEqualTo(y)`, `assertThat(x).contains(y)`) still work as before.
+
+- **Stale snapshot test assertion updated.** `tests/emitters/snapshot.test.ts` asserted the bundled-sample output file list, but the expected array hadn't been updated when v2.0.1 added `FILE_MAPPING.md` to every conversion output. Added the new file to the expected list — the assertion now matches the actual (correct) output.
+
+- **Latent since v2.0.0.** Not caught by `release.yml` because that workflow skips `npm test` (deliberate — see the v1.0.10 commit note about rollup Linux-binary flake). CI matrix (`ci.yml`) covers testing on Win/macOS/Linux across Node 18/20/22; this bug surfaced only on local `npm test` runs.
+
+### Why this release
+
+Referenced in the JOSS interim-cadence plan (§7.1, September 2026 entry) as a low-risk, high-user-facing-value docs pass. Documents the ~90 rules that ship in v2.0.5 so users landing on the npm page or GitHub README can see immediately what the migration covers instead of running a conversion to find out.
+
+---
+
+## [2.0.5] — Fix `this.driver.X` leaks that produced `this.await` / `this.// comment` syntax errors
+
+Patch release. Closes the two remaining TypeScript syntax errors on the `ui-api-bookknight` batch-v2 fixture. The Selenium/apiMap rewrite rules use `\bdriver\.` as their word-boundary pattern, which correctly matches `driver.X` in bare form — but the word boundary also matches inside `this.driver.X`, and the rule's replacement drops `driver.` and leaves the `this.` prefix stranded. In `SearchPOF.java` this produced two invalid outputs:
+
+- `this.driver.get(url);` -> `this.await this.page.goto(url);`  (TS1005 `;` expected)
+- `this.driver.quit();`   -> `this.// driver.quit() — handled by Playwright fixture`  (TS1003 identifier expected)
+
+### Fixed
+
+- **`this.driver.X` normalised to `driver.X` before the apiMap sweep runs.** One-line pre-pass in `applyApiRewrites` (`src/transformers/apiMap.ts`). All ~30 apiMap rules that match `\bdriver\.` now see the normalised form and produce clean output regardless of whether the Java source used `driver` or `this.driver`.
+
+### Impact
+
+- `ui-api-bookknight` (bundled batch-v2 fixture): **2 syntax errors -> 0** (TS1003 + TS1005 both gone).
+- No other bundled fixtures affected (grep-wide check: zero `this.await` or `this.//` leaks in any emitted `.ts` file across `eliasnogueira-lean` and `ui-api-bookknight`).
+
+### Not breaking
+
+Semver patch. Pre-pass is additive; existing rules unchanged. `eliasnogueira-lean` regression check: still 0 target syntax errors, spec file output byte-identical to v2.0.4.
+
+---
+
 ## [2.0.4] — `--dry-run` now prints the FILE_MAPPING preview to stdout
 
 Patch release. The `--dry-run` CLI flag has existed since 1.x but only printed the summary counts and a "no files written" line — you had to run without dry-run and open FILE_MAPPING.md to actually see what would land where. v2.0.4 makes dry-run useful for its intended purpose: safely previewing a migration without touching the filesystem.

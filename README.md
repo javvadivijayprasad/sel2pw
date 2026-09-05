@@ -46,28 +46,145 @@ Everything is reachable through the platform gateway at `/api/v1/converter/*`, w
 
 ## What it converts
 
-| Selenium / TestNG | Playwright TypeScript |
+The migration is organised as a rule-based AST + regex pipeline. Every mapping below is applied automatically; nothing here requires configuration. See `CONVERSION_REVIEW.md` in your output folder for the per-file record of which rules fired on which lines.
+
+### Navigation and page-level actions
+
+| Selenium (Java) | Playwright (TypeScript) |
 | --- | --- |
 | `driver.get(url)` | `await page.goto(url)` |
-| `By.id("x")` | `page.locator('#x')` |
-| `By.cssSelector("…")` | `page.locator('…')` |
-| `By.xpath("…")` | `page.locator('xpath=…')` |
+| `driver.navigate().to(url)` | `await page.goto(url)` |
+| `driver.navigate().back()` | `await page.goBack()` |
+| `driver.navigate().forward()` | `await page.goForward()` |
+| `driver.navigate().refresh()` | `await page.reload()` |
+| `driver.getCurrentUrl()` | `page.url()` |
+| `driver.getTitle()` | `await page.title()` |
+| `driver.getPageSource()` | `await page.content()` |
+| `driver.close()` / `driver.quit()` | _removed — Playwright's `page` fixture handles lifecycle_ |
+
+### Locators
+
+| Selenium (Java) | Playwright (TypeScript) |
+| --- | --- |
+| `By.id("username")` | `page.locator('#username')` |
+| `By.cssSelector(".btn")` | `page.locator('.btn')` |
+| `By.xpath("//div[@id='x']")` | `page.locator("xpath=//div[@id='x']")` |
 | `By.linkText("Sign out")` | `page.getByRole('link', { name: 'Sign out' })` |
+| `By.partialLinkText("out")` | `page.getByRole('link', { name: /out/ })` |
 | `By.name("q")` | `page.locator('[name="q"]')` |
-| `@FindBy(id="x") WebElement el` | `readonly el: Locator;` (initialised in ctor) |
+| `By.className("btn")` | `page.locator('.btn')` |
+| `By.tagName("button")` | `page.locator('button')` |
+| `driver.findElement(By.id("x"))` | `page.locator('#x')` |
+| `driver.findElements(By.css("li"))` | `page.locator('li')` _(a locator is a collection)_ |
+| `@FindBy(id="x") WebElement el` | `readonly el: Locator;` _(initialised in constructor)_ |
+| `@FindBys` / `@FindAll` | Chained `.locator(...).locator(...)` |
+
+### Element interactions
+
+| Selenium (Java) | Playwright (TypeScript) |
+| --- | --- |
 | `el.click()` | `await el.click()` |
-| `el.sendKeys("…")` | `await el.fill('…')` |
+| `el.sendKeys("hello")` | `await el.fill('hello')` |
+| `el.clear()` | `await el.clear()` |
+| `el.submit()` | `await el.press('Enter')` |
 | `el.getText()` | `await el.innerText()` |
+| `el.getAttribute("value")` | `await el.getAttribute('value')` |
+| `el.getCssValue("color")` | `await el.evaluate(e => getComputedStyle(e).color)` |
 | `el.isDisplayed()` | `await el.isVisible()` |
+| `el.isEnabled()` | `await el.isEnabled()` |
+| `el.isSelected()` | `await el.isChecked()` |
+| `new Select(el).selectByVisibleText("EN")` | `await el.selectOption({ label: 'EN' })` |
+| `new Actions(driver).moveToElement(el).perform()` | `await el.hover()` |
+| `new Actions(driver).dragAndDrop(a, b).perform()` | `await a.dragTo(b)` |
+| `new Actions(driver).sendKeys(el, "x").perform()` | `await el.fill('x')` |
+| `((JavascriptExecutor)driver).executeScript(js)` | `await page.evaluate(() => { … })` |
+
+### Waiting
+
+| Selenium (Java) | Playwright (TypeScript) |
+| --- | --- |
+| `new WebDriverWait(driver, 10).until(...)` | _removed — Playwright auto-waits on every locator action_ |
+| `ExpectedConditions.visibilityOf(el)` | Implicit in `el.click()` / `el.fill(...)` / etc |
+| `ExpectedConditions.elementToBeClickable(el)` | Implicit in `el.click()` |
+| `Thread.sleep(ms)` | `await page.waitForTimeout(ms)` _(flagged as `warning` — prefer waiting on a real condition)_ |
+| `driver.manage().timeouts().implicitlyWait(...)` | _removed — configure via `use: { actionTimeout: ... }` in `playwright.config.ts`_ |
+
+### Assertions
+
+| TestNG / JUnit / Hamcrest / AssertJ | Playwright (TypeScript) |
+| --- | --- |
 | `Assert.assertEquals(a, b)` | `expect(a).toBe(b)` |
+| `Assert.assertNotEquals(a, b)` | `expect(a).not.toBe(b)` |
 | `Assert.assertTrue(x)` | `expect(x).toBe(true)` |
-| `@Test` | `test('name', async ({ page }) => { ... })` |
-| `@BeforeMethod` | `test.beforeEach(...)` |
-| `@BeforeClass` | `test.beforeAll(...)` |
-| `WebDriverWait...until(...)` | _removed — Playwright auto-waits on locators_ |
-| `Thread.sleep(ms)` | `await page.waitForTimeout(ms)` _(flagged: prefer waiting on a real condition)_ |
-| Page Object class | TS class with `page: Page` + `Locator` fields |
-| `BaseTest` (lifecycle in superclass) | Flagged → port to Playwright fixture |
+| `Assert.assertFalse(x)` | `expect(x).toBe(false)` |
+| `Assert.assertNull(x)` / `assertNotNull(x)` | `expect(x).toBeNull()` / `expect(x).not.toBeNull()` |
+| `assertThat(x, is("y"))` _(Hamcrest)_ | `expect(x).toBe('y')` |
+| `assertThat(x, contains("y"))` | `expect(x).toContain('y')` |
+| `assertThat(actual).isEqualTo(x)` _(AssertJ)_ | `expect(actual).toBe(x)` |
+| `assertThat(actual).contains(x)` | `expect(actual).toContain(x)` |
+| `assertThat(actual).isTrue()` / `isFalse()` | `expect(actual).toBe(true)` / `.toBe(false)` |
+
+### Test lifecycle (TestNG)
+
+| Selenium / TestNG | Playwright (TypeScript) |
+| --- | --- |
+| `@Test public void x() { … }` | `test('x', async ({ page }) => { … })` |
+| `@Test(description="…")` | Description becomes the `test()` title |
+| `@Test(groups={"smoke"})` | Emitted as `// groups: smoke` comment (Playwright uses [tags](https://playwright.dev/docs/test-annotations#tag-tests) — apply manually) |
+| `@Test(dataProvider="rows")` | Emitted with a `TODO(sel2pw)` comment pointing at the [parameterised-loop pattern](https://playwright.dev/docs/test-parameterize) |
+| `@BeforeMethod` / `@BeforeEach` | `test.beforeEach(async ({ page }) => { … })` |
+| `@AfterMethod` / `@AfterEach` | `test.afterEach(...)` |
+| `@BeforeClass` / `@BeforeAll` | `test.beforeAll(...)` |
+| `@AfterClass` / `@AfterAll` | `test.afterAll(...)` |
+| `BaseTest` (superclass with driver lifecycle) | Emitted as `tests/fixtures.ts` — a Playwright fixture the specs consume |
+| Test class body | Wrapped in `test.describe('ClassName', () => { … })` |
+
+### Page Object Model
+
+| Selenium (Java) | Playwright (TypeScript) |
+| --- | --- |
+| Page Object class extending base | TS class with `page: Page` + typed `Locator` fields |
+| Constructor: `PageFactory.initElements(driver, this)` | `constructor(page: Page) { this.page = page; }` |
+| Inheritance: `class ChildPage extends ParentPage` | Preserved: `extends ParentPage` + `super(page)` in constructor |
+| Field/method name collision (e.g. field `next` + method `next()`) | Field auto-renamed to `nextLocator`; body references rewritten |
+| `this.driver.X` | Normalised to bare `driver.X` before rewrite (v2.0.5 — avoids `this.await` and `this.// comment` leaks) |
+
+### Infrastructure that Playwright replaces (skipped, not translated)
+
+These classes have no Playwright equivalent because Playwright's `page` fixture and `playwright.config.ts` `projects` array replace the whole layer. sel2pw detects them and skips emission, with the replacement noted in `FILE_MAPPING.md`:
+
+| Selenium infrastructure | Playwright replacement |
+| --- | --- |
+| `DriverManager` / `ThreadLocal<WebDriver>` | Playwright `page` fixture (per-test isolation is built-in) |
+| `BrowserFactory` (Chrome/Firefox/Edge switcher) | `projects` array in `playwright.config.ts` |
+| `TargetFactory` (local / Grid / TestContainers switcher) | Same — `projects` config |
+| `WebDriverManager.chromedriver().setup()` | _removed — Playwright bundles browsers via `npx playwright install`_ |
+| `@Config` interface + `@Key(...)` _(Aeonbits Owner library)_ | `.env` file + `tests/config.ts` env loader |
+| Sauce Labs cloud harness (`SauceOptions`, `SauceSession`, `MutableCapabilities`, `RemoteWebDriver`, `driver.executeScript("sauce:...")`) | _stripped from lifecycle hooks_ — Playwright Cloud runners (Sauce, BrowserStack, LambdaTest) integrate via `playwright.config.ts` `projects` + env vars |
+| `System.setProperty("webdriver.chrome.driver", …)` | _removed_ |
+| `driver.manage().window().maximize()` | Configure viewport in `use: { viewport: ... }` |
+
+### Aggregated shared files (v2.0+)
+
+Java types that repeat across the codebase get collected into one output file instead of one file per source. See `types/` and `data/` in the output.
+
+| Java source kind | Landing file | Example |
+| --- | --- | --- |
+| `enum X { … }` | `types/enums.ts` | `RoomType`, `Target` → single `export enum` block per input |
+| `class X extends Exception` (or `Error` / `Throwable`) | `types/errors.ts` | `HeadlessNotSupportedException` → `class HeadlessNotSupportedException extends Error` (all hierarchies collapse to TS `Error`) |
+| `record X(a, b, c) { }` / plain POJO | `data/models.ts` | `Booking` record → TS interface + optional builder |
+| Custom utility with no equivalent (`ConfigurationManager`, `AllureManager`, `BookingDataFactory`, `BrowserData`) | `tests/_legacy-stubs/<name>.ts` | Typed stub with `notImplemented()` calls — user migrates each call site, then deletes the stub |
+
+### CLI outputs (per conversion)
+
+| File | Purpose |
+| --- | --- |
+| `FILE_MAPPING.md` | Human-readable table of source Java → output TS, grouped by status (converted / aggregated / skipped / stubbed) |
+| `CONVERSION_REVIEW.md` | Per-item warnings and manual action list |
+| `MIGRATION_NOTES.md` | High-level notes about the migration (what to configure in `playwright.config.ts`, how to wire the fixture, etc.) |
+| `conversion-result.json` | Machine-readable version of the same data — for CI pipelines and downstream tooling |
+
+Preview any of these without writing files by adding `--dry-run` to the `convert` command.
 
 ## Pipeline
 

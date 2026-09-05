@@ -20,7 +20,16 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci
+      # v2.0.6 — same rollup workaround as release.yml. The Windows-
+      # generated package-lock.json only records win32 optional binaries
+      # so `npm ci` on Linux/macOS resolves without @rollup/rollup-linux-*
+      # and vitest crashes at import time (npm/cli#4828). Nuke + reinstall
+      # with --include=optional so the platform's native binaries land.
+      - name: Fresh install (rollup optional-deps workaround)
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install --no-audit --no-fund --include=optional
+        shell: bash
       - run: npm run lint
       - run: npm run build
       - run: npm test
@@ -45,7 +54,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm }
-      - run: npm ci
+      # Same rollup workaround as the build job above — see comment there.
+      - name: Fresh install (rollup optional-deps workaround)
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install --no-audit --no-fund --include=optional
+        shell: bash
       - run: npm run test:cov
       - uses: actions/upload-artifact@v4
         if: always()
