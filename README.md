@@ -2,7 +2,7 @@
 
 # @vijaypjavvadi/sel2pw
 
-> Selenium Java/TestNG → Playwright TypeScript converter
+> Selenium Java/TestNG → Playwright TypeScript scaffold converter (rule-based; Java via `java-parser` AST with regex fallback; C# via an experimental regex extractor)
 
 [![npm version](https://img.shields.io/npm/v/@vijaypjavvadi/sel2pw.svg?logo=npm&color=cb3837)](https://www.npmjs.com/package/@vijaypjavvadi/sel2pw)
 [![npm downloads](https://img.shields.io/npm/dm/@vijaypjavvadi/sel2pw.svg?logo=npm)](https://www.npmjs.com/package/@vijaypjavvadi/sel2pw)
@@ -26,7 +26,7 @@ Most teams are migrating off `selenium-java + TestNG` (and their BDD/Cucumber an
 >
 > The README's "what it converts" table below is honest about coverage. The 240-pattern reference at [`docs/CONVERSION_PATTERNS.md`](./docs/CONVERSION_PATTERNS.md) lists every pattern with its current support status. Run `npx tsc --noEmit` against the output before committing — the error count tells you exactly how much manual cleanup remains.
 >
-> **The pitch is "saves a month, not 100% automated."** A typical 100-200 file Selenium project converts in 90 seconds and takes 5-15 hours of human cleanup, vs 200-400 hours of hand-migration. That math holds even when individual files have lots of TS errors.
+> **What the numbers mean.** On the 15-repository benchmark (409 Java files, LLM fallback off), 150 files (36.7%) converted with no stubs, 152 (37.2%) contain stubs with migration recipes, 96 (23.5%) need mixed cleanup and 11 (2.7%) were skipped as data-only classes. "0 failed conversions" means no crashes and no missing outputs — every file produced either a scaffold or an explicit skip record — not that the output compiles or is behaviourally equivalent. sel2pw removes the mechanical part of a migration (locators, assertions, lifecycle, file layout); the remaining human effort has not been measured against a manual-migration baseline, so no time-saving multiple is claimed.
 
 ## Where this fits in the platform
 
@@ -42,7 +42,7 @@ Most teams are migrating off `selenium-java + TestNG` (and their BDD/Cucumber an
 
 Everything is reachable through the platform gateway at `/api/v1/converter/*`, with the same auth, governance config, and provenance shape as the other services. See [INTEGRATION.md](./INTEGRATION.md) for the API contract, gateway wiring, and cross-service flows.
 
-> **Status — v0.10.3:** Validated end-to-end against **8 real-world OSS Selenium codebases** (selenium1–8 in the test matrix), 0 failed conversions, 0 unclassified files. 45/45 unit + snapshot tests green. Ships as both an npm package (`@vijaypjavvadi/sel2pw`) and a standalone Windows `.exe` distributed via the platform downloads endpoint. Stack: Selenium Java/TestNG, Selenium Java + Cucumber BDD, Selenium C# + NUnit, Selenium C# + SpecFlow — all auto-detected. Optional LLM fallback for genuinely-unknown shapes (Anthropic / OpenAI / Gemini, with `ai-governance` sanitisation enforced before any model call). SQLite failure telemetry so recurring patterns become one-line patches. See [CHANGELOG.md](./CHANGELOG.md) for the full version history (0.1.0 → 0.10.3) and [STATUS.md](./STATUS.md) for the current verified state.
+> **Status — v2.0.x:** Validated against **15 real-world OSS Selenium codebases** (409 Java files; see [STATUS.md](./STATUS.md) for the per-repository matrix): no crashes, every file classified. Ships as an npm package (`@vijaypjavvadi/sel2pw`) and a standalone Windows `.exe`. Frontends: Selenium Java + TestNG/JUnit and Java + Cucumber BDD use the `java-parser` AST extractor with a per-file regex fallback; Selenium C# + NUnit/SpecFlow use a regex/balanced-brace extractor (experimental, validated on a small corpus only). Optional LLM fallback for constructs the rule catalogue does not cover (Anthropic / OpenAI / Gemini; off by default; `ai-governance` sanitisation before any model call). See [CHANGELOG.md](./CHANGELOG.md) for the full version history.
 
 ## What it converts
 
@@ -280,7 +280,7 @@ examples/selenium-testng-sample/   # input fixture for the demo
 └── src/test/java/com/example/...
 ```
 
-The IR boundary in `parser/javaExtractor.ts` is deliberately clean: today it's a regex+balanced-brace extractor (which works fine for conventional TestNG/POM shapes), but a real AST parser (e.g. `java-parser` on Chevrotain, or a JVM-side `JavaParser` sidecar) can be slotted in without changing scanner, transformers, or emitters.
+The IR boundary is deliberately clean. For Java, `parser/javaAst.ts` (a `java-parser`/Chevrotain CST walker) is the canonical extractor; `parser/javaExtractor.ts` is a regex+balanced-brace extractor used as a per-file fallback when the AST parse throws or `java-parser` is unavailable, and the run log records each fallback. For C#, `parser/csharpExtractor.ts` is regex+balanced-brace only — there is no C# AST parser yet, so C# support should be read as experimental.
 
 ## What's not yet handled (flagged in `CONVERSION_REVIEW.md`)
 
@@ -291,7 +291,7 @@ The IR boundary in `parser/javaExtractor.ts` is deliberately clean: today it's a
 - **iframe `switchTo().frame(...)`** — flagged; use `page.frameLocator(...)`.
 - **Alert handling** — flagged; use `page.on('dialog', d => d.accept())`.
 - **Cucumber `.feature` + step defs** — not in MVP. Roadmap below.
-- **C# / SpecFlow** — not in MVP. Roadmap below.
+- **C# / SpecFlow** — regex-based extractor only (no AST); handles conventional NUnit/SpecFlow shapes, validated on a small corpus. Treat as experimental.
 
 ## Roadmap
 
@@ -317,7 +317,7 @@ npm test
 
 If you use `@vijaypjavvadi/sel2pw` in academic work, please cite:
 
-> Javvadi, V. P. (2026). *@vijaypjavvadi/sel2pw: A Deterministic, AST-Based Migration Toolkit from Selenium Test Suites to Playwright TypeScript* (Version 1.0.1) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.20450292
+> Javvadi, V. P. (2026). *@vijaypjavvadi/sel2pw: A Deterministic, Rule-Based Migration Toolkit from Selenium Test Suites to Playwright TypeScript Scaffolds* [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.20450292
 
 A machine-readable [`CITATION.cff`](CITATION.cff) file is included in the repository root.
 

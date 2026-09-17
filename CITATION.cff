@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
-title: "@vijaypjavvadi/sel2pw: A Deterministic, AST-Based Migration Toolkit from Selenium Test Suites to Playwright TypeScript"
+title: "@vijaypjavvadi/sel2pw: A Deterministic, Rule-Based Migration Toolkit from Selenium Test Suites to Playwright TypeScript Scaffolds"
 authors:
   - family-names: Javvadi
     given-names: Vijay Prasad
@@ -27,9 +27,17 @@ keywords:
   - npm
 abstract: >-
   sel2pw is an open-source Node.js package that performs deterministic,
-  AST-based migration of legacy Selenium test suites (Java + TestNG/JUnit/Cucumber
-  and C# + NUnit/SpecFlow) to compiling Playwright TypeScript. Validated against
-  15 real-world OSS Selenium repositories totalling 409 Java source files with
-  zero failed conversions: 150 cleanly converted, 152 stubbed with migration
-  recipes, 11 honestly skipped (POJO-shaped). Produces CONVERSION_REVIEW.md
-  (line-level punch list) and MIGRATION_NOTES.md (project-wide guidance).
+  rule-based migration of legacy Selenium test suites to Playwright TypeScript
+  scaffolds intended for human completion. The Java frontend (TestNG/JUnit/Cucumber)
+  extracts from a java-parser AST and falls back to a regex extractor when AST
+  parsing fails; the C# frontend (NUnit/SpecFlow) is a regex/balanced-brace
+  extractor and is experimental. Every construct the rule catalogue does not cover
+  is emitted as an explicit stub with a migration recipe rather than silently
+  dropped; an optional, off-by-default LLM fallback can propose translations for
+  such constructs. On a benchmark of 15 open-source Selenium repositories (409 Java
+  source files, LLM fallback disabled) every file produced an output or an explicit
+  skip record (no crashes): 150 files were converted with no stubs, 152 contained
+  stubs, 96 needed mixed cleanup and 11 were skipped as data-only classes. Output
+  generally requires manual completion before it compiles; per-file TypeScript
+  error counts are reported in CONVERSION_REVIEW.md (line-level punch list) and
+  MIGRATION_NOTES.md (project-wide guidance).

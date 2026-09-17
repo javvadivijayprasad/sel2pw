@@ -4,7 +4,7 @@ A point-in-time snapshot. CHANGELOG.md is the authoritative history; this file i
 
 **Live on npm as `@vijaypjavvadi/sel2pw`.** Latest published: **v0.10.6** (post-publish CI hardening — telemetry resilience + coverage gating). v0.10.5 added 4 bug fixes from selenium9–15 validation. v0.10.4 fixed the CLI version reporting. v0.10.3 closed the selenium8 milestone. 0.9.0 failure-telemetry SQLite. 0.10.0 distribution pattern (`.exe`, platform downloads, structured `conversion-result.json`).
 
-### Validation matrix — 15 real-world codebases, 409 Java files, 0 failed conversions
+### Validation matrix — 15 real-world codebases, 409 Java files, 0 failed conversions (failed = crash or missing output; not a compile or equivalence claim)
 
 | Project | Files | Failed | Skipped | Notes |
 | --- | --- | --- | --- | --- |
