@@ -1,8 +1,5 @@
 node_modules/
-test-results/
 playwright-report/
-playwright/.cache/
+test-results/
 .env
 .env.local
-*.log
-.DS_Store
