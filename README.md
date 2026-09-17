@@ -317,7 +317,7 @@ npm test
 
 If you use `@vijaypjavvadi/sel2pw` in academic work, please cite:
 
-> Javvadi, V. P. (2026). *@vijaypjavvadi/sel2pw: A Deterministic, Rule-Based Migration Toolkit from Selenium Test Suites to Playwright TypeScript Scaffolds* [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.20450292
+> Javvadi, V. P. (2026). *@vijaypjavvadi/sel2pw: A Deterministic, Rule-Based Migration Toolkit from Selenium Test Suites to Playwright TypeScript Scaffolds* (Version 2.0.8) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.22819244 (concept DOI, all versions: https://doi.org/10.5281/zenodo.20450292)
 
 A machine-readable [`CITATION.cff`](CITATION.cff) file is included in the repository root.
 
