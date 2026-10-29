@@ -381,7 +381,7 @@ Your name could be next: pick a [good first issue](https://github.com/javvadivij
 
 If you use `@vijaypjavvadi/sel2pw` in academic work, please cite:
 
-> Javvadi, V. P. (2026). *@vijaypjavvadi/sel2pw: A Deterministic, Rule-Based Migration Toolkit from Selenium Test Suites to Playwright TypeScript Scaffolds* (Version 2.1.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.20450292
+> Javvadi, V. P. (2026). *@vijaypjavvadi/sel2pw: A Deterministic, Rule-Based Migration Toolkit from Selenium Test Suites to Playwright TypeScript Scaffolds* (Version 2.1.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23782649 (all versions: https://doi.org/10.5281/zenodo.20450292)
 
 A machine-readable [`CITATION.cff`](CITATION.cff) file is included in the repository root.
 
