@@ -8,11 +8,12 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ### Added
 
-- **Machine-readable dry runs:** `sel2pw convert --dry-run --format=json` prints structured conversion results to stdout without generating files. Markdown remains the default, and bare `--format` retains its Prettier behavior. Includes CLI regression tests.
+- **Machine-readable dry runs:** `sel2pw convert --dry-run --format=json` prints structured conversion results to stdout without generating files. Markdown remains the default, and bare `--format` retains its Prettier behavior. Includes CLI regression tests. Thanks to @OKAN-SOFTWARE ([#27](https://github.com/javvadivijayprasad/sel2pw/pull/27)).
 
 ### Fixed
 
 - **Stray closing brace in `tests/fixtures.ts`.** A `BaseTest` teardown written as `if (driver != null) { driver.quit(); }` left an orphan `}` in the generated fixture, so the output did not compile. The whole null-guarded block is now removed, in both `baseTestExtractor.ts` and `bodyTransformer.ts`, with unit tests. Fixes #14. Thanks to @bfs2021 for the first community contribution ([#26](https://github.com/javvadivijayprasad/sel2pw/pull/26)).
+- **Wrong output path in `FILE_MAPPING.md` / `conversion-result.json`.** When a page object and a test class shared a name stem (`LoginPage` / `LoginTest`), both were reported as the same output file. The report lookup now keeps the `.page` / `.spec` suffix, so each file maps to its own output. The converted files themselves were always correct. Fixes #28. Thanks to @bfs2021 ([#29](https://github.com/javvadivijayprasad/sel2pw/pull/29)).
 
 ---
 

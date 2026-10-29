@@ -11,6 +11,9 @@
 [![Node](https://img.shields.io/node/v/@vijaypjavvadi/sel2pw.svg?logo=node.js)](https://nodejs.org/)
 [![CI](https://github.com/javvadivijayprasad/sel2pw/actions/workflows/ci.yml/badge.svg)](https://github.com/javvadivijayprasad/sel2pw/actions/workflows/ci.yml)
 [![codebases validated](https://img.shields.io/badge/codebases%20validated-15-brightgreen)](./STATUS.md)
+[![good first issues](https://img.shields.io/github/issues/javvadivijayprasad/sel2pw/good%20first%20issue?color=7057ff&label=good%20first%20issues)](https://github.com/javvadivijayprasad/sel2pw/labels/good%20first%20issue)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
+[![Up for Grabs](https://img.shields.io/badge/listed%20on-Up%20for%20Grabs-orange)](https://up-for-grabs.net/)
 
 Most teams are migrating off `selenium-java + TestNG` (and their BDD/Cucumber and C#/SpecFlow cousins) onto Playwright. The painful part isn't writing new tests — it's the *thousands of existing ones* you can't afford to throw away.
 
@@ -362,6 +365,17 @@ npm run convert:sample   # convert the bundled sample into examples/output-playw
 ```
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for how the pipeline is organised and how to add a new rule.
+
+### Contributors
+
+Thank you to everyone who has helped improve sel2pw:
+
+- [@bfs2021](https://github.com/bfs2021): fixed the stray brace in generated fixtures ([#26](https://github.com/javvadivijayprasad/sel2pw/pull/26)) and the wrong output paths in `FILE_MAPPING.md` ([#29](https://github.com/javvadivijayprasad/sel2pw/pull/29))
+- [@OKAN-SOFTWARE](https://github.com/OKAN-SOFTWARE): added `--dry-run --format=json` for CI pipelines ([#27](https://github.com/javvadivijayprasad/sel2pw/pull/27))
+
+[![Contributors](https://contrib.rocks/image?repo=javvadivijayprasad/sel2pw)](https://github.com/javvadivijayprasad/sel2pw/graphs/contributors)
+
+Your name could be next: pick a [good first issue](https://github.com/javvadivijayprasad/sel2pw/labels/good%20first%20issue).
 
 ## Citation
 
