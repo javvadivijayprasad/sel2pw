@@ -26,7 +26,7 @@ export interface Logger {
 function makeFallback(prefix: Record<string, unknown> = {}): Logger {
   const level = (process.env.LOG_LEVEL ?? "info").toLowerCase();
   const order = ["trace", "debug", "info", "warn", "error", "fatal"];
-  const minIdx = Math.max(0, order.indexOf(level));
+  const minIdx = level === "silent" ? order.length : Math.max(0, order.indexOf(level));
   const emit = (lvl: string, msgOrObj: unknown, msg?: string): void => {
     if (order.indexOf(lvl) < minIdx) return;
     const ts = new Date().toISOString();

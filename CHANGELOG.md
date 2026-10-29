@@ -6,6 +6,10 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ## [Unreleased]
 
+### Added
+
+- **Machine-readable dry runs:** `sel2pw convert --dry-run --format=json` prints structured conversion results to stdout without generating files. Markdown remains the default, and bare `--format` retains its Prettier behavior. Includes CLI regression tests.
+
 ### Fixed
 
 - **Stray closing brace in `tests/fixtures.ts`.** A `BaseTest` teardown written as `if (driver != null) { driver.quit(); }` left an orphan `}` in the generated fixture, so the output did not compile. The whole null-guarded block is now removed, in both `baseTestExtractor.ts` and `bodyTransformer.ts`, with unit tests. Fixes #14. Thanks to @bfs2021 for the first community contribution ([#26](https://github.com/javvadivijayprasad/sel2pw/pull/26)).

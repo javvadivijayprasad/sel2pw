@@ -26,7 +26,11 @@ import { eslintValidate } from "./post/eslintValidate";
 import { detectAndEmitAuthSetup } from "./post/authSetupGenerator";
 import { insertTodoMarkers } from "./post/todoMarkers";
 import { writeMigrationNotes } from "./reports/migrationNotes";
-import { writeConversionResult } from "./reports/conversionResult";
+import {
+  buildConversionResult,
+  ConversionResultJson,
+  writeConversionResult,
+} from "./reports/conversionResult";
 import { writeFileMapping, renderFileMapping } from "./reports/fileMapping";
 import { extractPageObject as extractPageObjectIR } from "./parser/javaAst";
 import { emitPageBag } from "./emitters/pageBagEmitter";
@@ -140,6 +144,8 @@ export async function convert(opts: ConvertOptions): Promise<{
    * accidentally print the preview on write mode.
    */
   dryRunPreview?: string;
+  /** Structured version of the dry-run preview, identical to conversion-result.json. */
+  dryRunResult?: ConversionResultJson;
 }> {
   const inputDir = path.resolve(opts.inputDir);
   const outputDir = path.resolve(opts.outputDir);
@@ -621,11 +627,14 @@ export async function convert(opts: ConvertOptions): Promise<{
   // v2.0.4 — when dry-run, render the mapping preview so the CLI can print
   // it to stdout without needing to touch the filesystem. Same content the
   // user would see if they opened FILE_MAPPING.md after a real run.
+  const dryRunResult = opts.dryRun
+    ? buildConversionResult(conversionResultArgs)
+    : undefined;
   const dryRunPreview = opts.dryRun
     ? renderFileMapping(conversionResultArgs)
     : undefined;
 
-  return { summary, files: postFiles, dryRunPreview };
+  return { summary, files: postFiles, dryRunPreview, dryRunResult };
 }
 
 export async function analyze(inputDir: string): Promise<{

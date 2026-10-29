@@ -3,7 +3,6 @@ import { Command } from "commander";
 import chalk from "chalk";
 import * as path from "path";
 import * as fs from "fs";
-import { convert, analyze } from "./index";
 
 // Read version from package.json at runtime so we never have to hand-sync
 // the CLI version with package.json again. Falls back to "unknown" if the
@@ -42,7 +41,8 @@ program
   .option("--dry-run", "Print what would be converted without writing files.")
   .option("--emit-self-healing-shim", "Wrap locators in healOrThrow() for runtime self-healing.")
   .option("--emit-auth-setup", "Generate tests/auth.setup.ts when a LoginPage is detected.")
-  .option("--format", "Run Prettier over generated TS.")
+  .option("--format", "Run Prettier over generated TypeScript.")
+  .option("--preview-format <mode>", "Dry-run preview format: markdown (default) | json.", "markdown")
   .option("--validate", "Run `tsc --noEmit` over generated project as a gate.")
   .option("--validate-eslint", "Run ESLint over generated project (requires eslint config in output).")
   .option(
@@ -66,6 +66,7 @@ program
     emitSelfHealingShim?: boolean;
     emitAuthSetup?: boolean;
     format?: boolean;
+    previewFormat?: "markdown" | "json" | string;
     validate?: boolean;
     validateEslint?: boolean;
     bddMode?: "preserve" | "flatten";
@@ -80,7 +81,23 @@ program
     diff?: boolean;
   }) => {
     try {
-      console.log(chalk.cyan(`sel2pw — converting ${inputDir} -> ${opts.out}`));
+      if (!["markdown", "json"].includes(opts.previewFormat ?? "markdown")) {
+        console.error(`Invalid preview format: ${opts.previewFormat}. Choose markdown or json.`);
+        process.exitCode = 2;
+        return;
+      }
+      if (opts.previewFormat === "json" && (!opts.dryRun || opts.diff)) {
+        console.error("--format=json requires --dry-run and cannot be combined with --diff");
+        process.exitCode = 2;
+        return;
+      }
+
+      const jsonPreview = opts.previewFormat === "json";
+      // Initialise the converter after choosing the mode. Its logger is
+      // configured on import; JSON stdout must contain only the report.
+      if (jsonPreview) process.env.LOG_LEVEL = "silent";
+      const { convert } = await import("./index");
+      if (!jsonPreview) console.log(chalk.cyan(`sel2pw — converting ${inputDir} -> ${opts.out}`));
 
       // Build LLM fallback config when --llm-fallback is set.
       let llmFallback: { provider: "anthropic" | "openai" | "gemini"; apiKey: string; model?: string } | undefined;
@@ -101,7 +118,7 @@ program
         }
         llmFallback = { provider, apiKey, model: opts.llmModel };
       }
-      const { summary, files, dryRunPreview } = await convert({
+      const { summary, files, dryRunPreview, dryRunResult } = await convert({
         inputDir,
         outputDir: opts.out,
         templatesDir: opts.templates ?? path.resolve(__dirname, "..", "templates"),
@@ -109,6 +126,7 @@ program
         emitSelfHealingShim: opts.emitSelfHealingShim,
         emitAuthSetup: opts.emitAuthSetup,
         formatOutput: opts.format,
+        telemetryDb: jsonPreview ? false : undefined,
         validateOutput: opts.validate,
         validateEslint: opts.validateEslint,
         bddMode: opts.bddMode,
@@ -118,6 +136,11 @@ program
         forceStack: opts.lang === "csharp" ? "csharp-nunit" : opts.lang === "java" ? "java-testng" : undefined,
         llmFallback,
       });
+
+      if (jsonPreview) {
+        console.log(JSON.stringify(dryRunResult, null, 2));
+        return;
+      }
 
       if (opts.diff) {
         const fs = require("fs-extra"); // eslint-disable-line @typescript-eslint/no-require-imports
@@ -162,6 +185,7 @@ program
   .argument("<inputDir>", "Path to the Java/Selenium project.")
   .action(async (inputDir: string) => {
     try {
+      const { analyze } = await import("./index");
       const result = await analyze(inputDir);
       console.log(chalk.cyan(`Files scanned: ${result.filesScanned}`));
       for (const [kind, n] of Object.entries(result.byKind)) {
@@ -335,4 +359,11 @@ function simpleDiff(before: string, after: string): string {
   return lines.length ? lines.join("\n") : "(no textual diff)";
 }
 
-program.parseAsync(process.argv);
+// Keep the original boolean --format flag unambiguous in every argument
+// position. Map only explicit --format=<mode> aliases to the preview option.
+const cliArgs = process.argv.map((arg) =>
+  arg.startsWith("--format=")
+    ? `--preview-format=${arg.slice("--format=".length)}`
+    : arg,
+);
+program.parseAsync(cliArgs);

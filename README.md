@@ -270,6 +270,7 @@ Most useful `convert` options:
 | Option | What it does |
 | --- | --- |
 | `--dry-run` | Print the plan without writing files |
+| `--dry-run --format=json` | Print machine-readable `conversion-result.json` to stdout without writing files. Default dry-run output remains Markdown; bare `--format` still enables Prettier. |
 | `--diff` | Like `--dry-run`, but show diffs against an existing output folder |
 | `--validate` | Run `tsc --noEmit` on the output and add the errors to the review report |
 | `--format` | Run Prettier over the generated TypeScript |

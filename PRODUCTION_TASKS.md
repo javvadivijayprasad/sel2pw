@@ -67,6 +67,7 @@ Effort scale: **S** = ~1 day, **M** = ~2–5 days, **L** = ~1–2 weeks, **XL** 
 
 **Goal:** the generated project compiles green, lints clean, and reads like code a Playwright dev would have written.
 
+- [x] **Machine-readable dry-run preview** (S). Add `--format=json` to print the conversion-result schema for CI automation without output files; preserve Markdown and the existing Prettier flag.
 - [x] **Run Prettier on every generated file** (S). Currently we hand-format; that's brittle. Pipe through prettier with the user's config if present.
 - [ ] **Run ESLint on output and surface any warnings in the review report** (S).
 - [x] **`tsc --noEmit` on the generated project as part of the pipeline** (S). Block the `convert` command from claiming success if the output doesn't typecheck (with a `--no-validate` escape hatch).
