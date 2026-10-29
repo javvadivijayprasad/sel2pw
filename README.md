@@ -85,7 +85,7 @@ npm install && npx playwright install chromium
 npx playwright test --project=chromium
 ```
 
-With the published v2.0.10, the first run stops on a compile error in `tests/fixtures.ts`: a stray `}` left behind when sel2pw removes `driver.quit()`. This is fixed on `main` ([#26](https://github.com/javvadivijayprasad/sel2pw/pull/26)) and will ship in the next release; until then, delete the extra brace. The second edit, adding `.first()` to one locator, is described in `MANUAL_EDITS.md`.
+The first run fails one check: the inventory page locator matches six products, and Playwright's strict mode refuses that. Add `.first()` to that locator, as described in `MANUAL_EDITS.md`, and both tests pass. (Before v2.1.0 there was also a stray `}` in `tests/fixtures.ts`; that was fixed in [#26](https://github.com/javvadivijayprasad/sel2pw/pull/26).)
 
 > **Status — v2.0.x:** Validated against **15 real-world OSS Selenium codebases** (409 Java files; see [STATUS.md](./STATUS.md) for the per-repository matrix): no crashes, every file classified. Ships as an npm package (`@vijaypjavvadi/sel2pw`) and a standalone Windows `.exe`. Frontends: Selenium Java + TestNG/JUnit and Java + Cucumber BDD use the `java-parser` AST extractor with a per-file regex fallback; Selenium C# + NUnit/SpecFlow use a regex/balanced-brace extractor (experimental, validated on a small corpus only). Optional LLM fallback for constructs the rule catalogue does not cover (Anthropic / OpenAI / Gemini; off by default; `ai-governance` sanitisation before any model call). See [CHANGELOG.md](./CHANGELOG.md) for the full version history.
 
@@ -381,7 +381,7 @@ Your name could be next: pick a [good first issue](https://github.com/javvadivij
 
 If you use `@vijaypjavvadi/sel2pw` in academic work, please cite:
 
-> Javvadi, V. P. (2026). *@vijaypjavvadi/sel2pw: A Deterministic, Rule-Based Migration Toolkit from Selenium Test Suites to Playwright TypeScript Scaffolds* (Version 2.0.10) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23437407 (concept DOI, all versions: https://doi.org/10.5281/zenodo.20450292)
+> Javvadi, V. P. (2026). *@vijaypjavvadi/sel2pw: A Deterministic, Rule-Based Migration Toolkit from Selenium Test Suites to Playwright TypeScript Scaffolds* (Version 2.1.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.20450292
 
 A machine-readable [`CITATION.cff`](CITATION.cff) file is included in the repository root.
 

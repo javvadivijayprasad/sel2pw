@@ -4,7 +4,9 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
-## [Unreleased]
+## [2.1.0] — JSON dry-run output + two community fixes
+
+The first release with community contributions: thank you to @bfs2021 and @OKAN-SOFTWARE.
 
 ### Added
 
