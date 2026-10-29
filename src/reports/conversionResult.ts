@@ -87,23 +87,30 @@ export async function writeConversionResult(args: BuildResultArgs): Promise<stri
 export function buildConversionResult(args: BuildResultArgs): ConversionResultJson {
   const { inputDir, outputDir, sourceStack, scannedFiles, convertedFiles, warnings, summary } = args;
 
-  // Index converted files by source path basename for quick lookup. The
-  // emitted file paths are kebab-cased (login-tests.spec.ts, action-driver.page.ts)
-  // while the IR carries the original PascalCase class name. Both sides
-  // get kebab-normalised so lookups match.
-  // Stem extraction also covers `tests/fixtures.ts` (no `.spec`/`.page`
-  // segment) so base test files are findable — see selenium13/14/15 which
-  // had BaseTest/TestBase reported as failed pre-fix.
-  const convertedByStem = new Map<string, ConvertedFile>();
+  // Index converted files by output basename for quick lookup. The emitted
+  // file paths are kebab-cased (login.spec.ts, action-driver.page.ts) while
+  // the IR carries the original PascalCase class name. Both sides get
+  // kebab-normalised so lookups match.
+  //
+  // Keep the `.page` / `.spec` suffix in the key: `pages/login.page.ts` and
+  // `tests/login.spec.ts` share the bare stem `login`, and a stem-only map
+  // silently overwrote one entry with the other, so a LoginPage and a
+  // LoginTest could both be reported as the same output file (whichever was
+  // indexed last won). `byStem` stays as a fallback for helper/config
+  // outputs that carry no page/spec segment; it stores the first entry per
+  // stem so the result is deterministic.
+  const byOutputName = new Map<string, ConvertedFile>();
+  const byStem = new Map<string, ConvertedFile>();
   for (const cf of convertedFiles) {
-    const stem = path
-      .basename(cf.relPath, ".ts")
-      .replace(/\.(page|spec)$/, "")
-      .toLowerCase();
-    convertedByStem.set(stem, cf);
+    const name = path.basename(cf.relPath, ".ts").toLowerCase();
+    byOutputName.set(name, cf);
+    const stem = name.replace(/\.(page|spec)$/, "");
+    if (!byStem.has(stem)) byStem.set(stem, cf);
   }
 
-  const files: FileOutcome[] = scannedFiles.map((f) => fileOutcomeFor(f, warnings, convertedByStem));
+  const files: FileOutcome[] = scannedFiles.map((f) =>
+    fileOutcomeFor(f, warnings, byOutputName, byStem),
+  );
 
   const projectNotes = warnings
     .filter((w) => isProjectWide(w.file))
@@ -137,10 +144,35 @@ export function buildConversionResult(args: BuildResultArgs): ConversionResultJs
   };
 }
 
+/**
+ * Resolve the emitted file for a scanned source file. Page objects and test
+ * classes are looked up with their emit suffix (`<stem>.page` / `<stem>.spec`)
+ * so the two namespaces cannot collide; everything else falls back to the
+ * exact basename and then the legacy stem index (helpers, configs, fixtures).
+ */
+function matchConverted(
+  kind: JavaFile["kind"],
+  stem: string,
+  byOutputName: Map<string, ConvertedFile>,
+  byStem: Map<string, ConvertedFile>,
+): ConvertedFile | undefined {
+  const suffixed = kind === "page-object"
+    ? `${stem}.page`
+    : kind === "test-class"
+      ? `${stem}.spec`
+      : null;
+  if (suffixed) {
+    const hit = byOutputName.get(suffixed);
+    if (hit) return hit;
+  }
+  return byOutputName.get(stem) ?? byStem.get(stem);
+}
+
 function fileOutcomeFor(
   file: JavaFile,
   warnings: ReviewItem[],
-  convertedByStem: Map<string, ConvertedFile>,
+  byOutputName: Map<string, ConvertedFile>,
+  byStem: Map<string, ConvertedFile>,
 ): FileOutcome {
   const fileWarnings = warnings.filter((w) => w.file === file.path);
   const hasManual = fileWarnings.some((w) => w.severity === "manual");
@@ -164,7 +196,7 @@ function fileOutcomeFor(
         /-(tests?(?:-?case)?|page-?objects?|pages?|screens?|views?)$/,
         "",
       );
-  const matched = convertedByStem.get(stem);
+  const matched = matchConverted(file.kind, stem, byOutputName, byStem);
 
   if (file.kind === "unknown") {
     // Either promoted to a stub by customUtilDetector, or genuinely skipped.
