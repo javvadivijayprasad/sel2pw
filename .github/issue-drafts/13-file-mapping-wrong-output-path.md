@@ -36,7 +36,7 @@ One simple fix is to keep the suffix in the key: use `login.page` for page objec
 - [ ] The dry run above shows `LoginTest.java → tests/login.spec.ts`.
 - [ ] A unit test covers a page object and a test class that share a stem, and checks that each maps to its own file.
 - [ ] `npm test` and `npm run lint` pass.
-- [ ] Bonus (once #27 is merged): in `tests/cli/dryRunFormat.test.ts`, the parity test no longer needs to ignore the `output` field.
+- [ ] Bonus: in `tests/cli/dryRunFormat.test.ts` (added in #27), the parity test currently ignores the `output` field because of this bug. Once fixed, remove that workaround so the test compares `output` too.
 
 ---
 
