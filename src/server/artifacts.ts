@@ -21,7 +21,9 @@ export interface ArtifactDriver {
   /** Persist a single file (e.g. CONVERSION_REVIEW.md, governance_audit.json). */
   putFile(srcPath: string, destKey: string): Promise<string>;
   /** Resolve a URI to a readable stream so the HTTP layer can serve it. */
-  openRead(uri: string): Promise<{ stream: Readable; contentType: string; size?: number }>;
+  openRead(
+    uri: string,
+  ): Promise<{ stream: Readable; contentType: string; size?: number }>;
 }
 
 export class LocalArtifactDriver implements ArtifactDriver {
@@ -44,9 +46,7 @@ export class LocalArtifactDriver implements ArtifactDriver {
   async openRead(
     uri: string,
   ): Promise<{ stream: Readable; contentType: string; size?: number }> {
-    const localPath = uri.startsWith("file://")
-      ? uri.replace(/^file:\/\//, "")
-      : uri;
+    const localPath = uri.startsWith("file://") ? uri.replace(/^file:\/\//, "") : uri;
     const stat = await fs.stat(localPath);
     const ext = path.extname(localPath).toLowerCase();
     const contentType =
@@ -80,9 +80,11 @@ export class S3ArtifactDriver implements ArtifactDriver {
   }
 }
 
-export function makeArtifactDriver(
-  config: { driver: "local" | "s3"; rootDir?: string; bucket?: string },
-): ArtifactDriver {
+export function makeArtifactDriver(config: {
+  driver: "local" | "s3";
+  rootDir?: string;
+  bucket?: string;
+}): ArtifactDriver {
   if (config.driver === "s3") {
     if (!config.bucket) throw new Error("s3 driver requires bucket");
     return new S3ArtifactDriver(config.bucket);

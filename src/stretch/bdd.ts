@@ -79,7 +79,9 @@ export async function convertBdd(
         .map((n, i) => `${n}: ${cucumberToTsType(step.paramTypes[i])}`)
         .join(", ");
       const fn = step.kind === "And" || step.kind === "But" ? "When" : step.kind;
-      lines.push(`${fn}(${JSON.stringify(step.pattern)}, async ({ page }${tsParams ? `, ${tsParams}` : ""}) => {`);
+      lines.push(
+        `${fn}(${JSON.stringify(step.pattern)}, async ({ page }${tsParams ? `, ${tsParams}` : ""}) => {`,
+      );
       lines.push(dedentAndIndent(transformed.body, "  "));
       lines.push(`});`);
       lines.push("");
@@ -159,7 +161,8 @@ function readBraced(source: string, start: number): string | null {
 
 function cucumberToTsType(javaType: string): string {
   if (javaType === "String") return "string";
-  if (["int", "Integer", "long", "Long", "double", "float"].includes(javaType)) return "number";
+  if (["int", "Integer", "long", "Long", "double", "float"].includes(javaType))
+    return "number";
   if (javaType === "boolean" || javaType === "Boolean") return "boolean";
   return "unknown";
 }

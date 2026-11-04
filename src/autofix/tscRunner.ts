@@ -74,7 +74,16 @@ export async function runTsc(
   const tsBin = options.tsBin ?? "npx";
   const args =
     tsBin === "npx"
-      ? ["--no-install", "tsc", "-p", projectDir, "--noEmit", "--pretty", "false", "--noErrorTruncation"]
+      ? [
+          "--no-install",
+          "tsc",
+          "-p",
+          projectDir,
+          "--noEmit",
+          "--pretty",
+          "false",
+          "--noErrorTruncation",
+        ]
       : ["-p", projectDir, "--noEmit", "--pretty", "false", "--noErrorTruncation"];
 
   let rawOutput = "";
@@ -102,7 +111,8 @@ export async function runTsc(
       ok: false,
       errorCount: -1,
       errors: [],
-      rawOutput: "[tscRunner] empty output - tsc binary not found or invocation failed. Check that node_modules/typescript is installed in projectDir.",
+      rawOutput:
+        "[tscRunner] empty output - tsc binary not found or invocation failed. Check that node_modules/typescript is installed in projectDir.",
     };
   }
 
@@ -145,9 +155,7 @@ async function parseTscOutput(
     const absPath = path.isAbsolute(filePath)
       ? filePath
       : path.resolve(projectDir, filePath);
-    const relPath = path
-      .relative(projectDir, absPath)
-      .replace(/\\/g, "/");
+    const relPath = path.relative(projectDir, absPath).replace(/\\/g, "/");
 
     // Read + cache file contents so multiple errors in the same file
     // don't re-read it.

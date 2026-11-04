@@ -125,7 +125,8 @@ async function collectFiles(dir: string): Promise<string[]> {
     for (const e of entries) {
       const full = path.join(cur, e.name);
       if (e.isDirectory()) {
-        if (["target", "build", ".idea", "node_modules", ".git"].includes(e.name)) continue;
+        if (["target", "build", ".idea", "node_modules", ".git"].includes(e.name))
+          continue;
         stack.push(full);
       } else if (e.isFile()) {
         out.push(path.relative(dir, full).replace(/\\/g, "/"));

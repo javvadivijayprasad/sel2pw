@@ -74,10 +74,7 @@ export function applyAssertionRewrites(body: string): string {
  * Returns args and the index just AFTER the matching `)`.
  * String-aware (double-quoted strings only — Java doesn't have single-quoted strings beyond chars).
  */
-function parseArgs(
-  s: string,
-  start: number,
-): { args: string[]; endIdx: number } | null {
+function parseArgs(s: string, start: number): { args: string[]; endIdx: number } | null {
   let depth = 1;
   let inString = false;
   let cur = "";

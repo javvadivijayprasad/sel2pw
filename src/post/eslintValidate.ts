@@ -54,16 +54,7 @@ export async function eslintValidate(outputDir: string): Promise<{
   try {
     await execFileP(
       "npx",
-      [
-        "--no-install",
-        "eslint",
-        "--format",
-        "compact",
-        "--ext",
-        ".ts",
-        "tests",
-        "pages",
-      ],
+      ["--no-install", "eslint", "--format", "compact", "--ext", ".ts", "tests", "pages"],
       {
         cwd: outputDir,
         maxBuffer: 10 * 1024 * 1024,
@@ -79,7 +70,9 @@ export async function eslintValidate(outputDir: string): Promise<{
 
     // Tooling missing (expected if user hasn't `npm install`-ed in output).
     if (
-      /'npx' is not recognised|not found|ENOENT|Cannot find module|cannot find/i.test(out) ||
+      /'npx' is not recognised|not found|ENOENT|Cannot find module|cannot find/i.test(
+        out,
+      ) ||
       out.length === 0
     ) {
       logger.info(
@@ -98,7 +91,8 @@ export async function eslintValidate(outputDir: string): Promise<{
     // Parse compact-format output:
     //   <abs-path>: line N, col M, Error - <message> (<rule>)
     //   <abs-path>: line N, col M, Warning - <message> (<rule>)
-    const lineRe = /^(.+?):\s+line\s+(\d+),\s+col\s+(\d+),\s+(Error|Warning)\s+-\s+(.+?)\s+\((.+?)\)\s*$/;
+    const lineRe =
+      /^(.+?):\s+line\s+(\d+),\s+col\s+(\d+),\s+(Error|Warning)\s+-\s+(.+?)\s+\((.+?)\)\s*$/;
     let parsedCount = 0;
     let errorCount = 0;
     for (const raw of out.split("\n")) {

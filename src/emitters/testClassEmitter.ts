@@ -18,10 +18,7 @@ import { dedentAndIndent } from "../utils/indent";
  *     test('valid login', async ({ page }) => { ... });
  *   });
  */
-export function emitTestClass(
-  ir: TestClassIR,
-  sourceFilePath: string,
-): ConvertedFile {
+export function emitTestClass(ir: TestClassIR, sourceFilePath: string): ConvertedFile {
   const warnings: ReviewItem[] = [];
   const lines: string[] = [];
 
@@ -188,14 +185,8 @@ function rewriteThisPageInSpecBody(body: string): string {
   let out = body;
   // Specific shapes first â they emit `await` so we run them before the
   // generic `this.page` strip.
-  out = out.replace(
-    /this\.page\.navigate\(\)\.to\(([^)]*)\)/g,
-    "await page.goto($1)",
-  );
-  out = out.replace(
-    /this\.page\.getTitle\(\s*\)/g,
-    "await page.title()",
-  );
+  out = out.replace(/this\.page\.navigate\(\)\.to\(([^)]*)\)/g, "await page.goto($1)");
+  out = out.replace(/this\.page\.getTitle\(\s*\)/g, "await page.title()");
   // Then strip the bare `this.` prefix from anything that's left.
   out = out.replace(/(?<![\w$.])this\.page(?![\w$])/g, "page");
   return out;
@@ -207,10 +198,7 @@ function rewriteThisPageInSpecBody(body: string): string {
  *
  * Skips calls already preceded by `await ` to avoid double-await.
  */
-function rewriteAwaitOnPageObjectCalls(
-  body: string,
-  pageObjectTypes: string[],
-): string {
+function rewriteAwaitOnPageObjectCalls(body: string, pageObjectTypes: string[]): string {
   let out = body;
   for (const pt of pageObjectTypes) {
     const inst = toCamelCase(pt);

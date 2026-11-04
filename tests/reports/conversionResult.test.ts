@@ -5,11 +5,7 @@ import {
 } from "../../src/reports/conversionResult";
 import { ConvertedFile, JavaFile } from "../../src/types";
 
-function javaFile(
-  className: string,
-  kind: JavaFile["kind"],
-  relPath: string,
-): JavaFile {
+function javaFile(className: string, kind: JavaFile["kind"], relPath: string): JavaFile {
   return {
     path: `C:/src/${relPath}`,
     relPath,
@@ -91,9 +87,9 @@ describe("buildConversionResult file mapping", () => {
 
     const result = buildConversionResult(buildArgs(scanned, convertedFiles));
 
-    expect(
-      result.files.find((f) => f.source === "src/tests/BaseTest.java")?.output,
-    ).toBe("tests/fixtures.ts");
+    expect(result.files.find((f) => f.source === "src/tests/BaseTest.java")?.output).toBe(
+      "tests/fixtures.ts",
+    );
     expect(
       result.files.find((f) => f.source === "src/pages/LoginPage.java")?.output,
     ).toBe("pages/login.page.ts");

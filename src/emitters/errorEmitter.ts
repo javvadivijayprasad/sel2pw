@@ -69,9 +69,7 @@ interface ParsedException {
 
 function parseException(source: string, fallbackName: string): ParsedException {
   // Strip comments before scanning so doc strings don't confuse the regexes.
-  const stripped = source
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/\/\/[^\n]*/g, "");
+  const stripped = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
   const nameRe =
     /\bpublic\s+(?:abstract\s+|final\s+)?class\s+(\w+)\s+extends\s+\w*(?:Exception|Error|Throwable)\b/m;
@@ -165,9 +163,7 @@ function convertSuperCall(javaBody: string): string {
   if (!argRaw) return "super();";
 
   // String.format("…%s…", arg) → template literal `…${arg}…`.
-  const fmtMatch = argRaw.match(
-    /^String\.format\s*\(\s*"([^"]*)"\s*,\s*([^)]+)\)$/,
-  );
+  const fmtMatch = argRaw.match(/^String\.format\s*\(\s*"([^"]*)"\s*,\s*([^)]+)\)$/);
   if (fmtMatch) {
     const tmpl = fmtMatch[1];
     const rest = fmtMatch[2].trim();

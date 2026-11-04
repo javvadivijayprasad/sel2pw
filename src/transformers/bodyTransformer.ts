@@ -110,9 +110,8 @@ export function transformMethodBody(
   // replaced by a `// comment`, the result is `if (cond) // comment` — TS
   // syntactically requires a body. Wrap the comment in `{ … }` so the output
   // still compiles. Same for `else <comment>`.
-  body = body.replace(
-    /\b(if|else)\s*\((?:[^)(]|\([^)(]*\))*\)\s*(\/\/[^\n]*)/g,
-    (m) => m.replace(/(\/\/[^\n]*)$/, "{ $1 }"),
+  body = body.replace(/\b(if|else)\s*\((?:[^)(]|\([^)(]*\))*\)\s*(\/\/[^\n]*)/g, (m) =>
+    m.replace(/(\/\/[^\n]*)$/, "{ $1 }"),
   );
   // Bare `else //comment` (no parens) — `else` keyword followed by a comment.
   body = body.replace(/\belse\s+(\/\/[^\n]*)/g, "else { $1 }");
@@ -128,15 +127,12 @@ export function transformMethodBody(
   body = body.replace(/\bpage\.findElement\s*\(/g, "page.locator(");
   body = body.replace(/\bpage\.findElements\s*\(/g, "page.locator(");
 
-    // v2.0 consolidation — Java `var` (or surviving `var` from incomplete
+  // v2.0 consolidation — Java `var` (or surviving `var` from incomplete
   // earlier transformations) is a JS hoisting keyword we don't want; convert
   // to `const`. Skip declarations that are followed by reassignment in the
   // same block (we'd need a proper AST for that — vanishingly rare for
   // method-local Java-style locals).
-  body = body.replace(
-    /^([\t ]*)var\s+(\w+)\s*=/gm,
-    "$1const $2 =",
-  );
+  body = body.replace(/^([\t ]*)var\s+(\w+)\s*=/gm, "$1const $2 =");
 
   return { body, warnings };
 }

@@ -93,7 +93,8 @@ export function summaryToStats(summary: ConversionSummary): JobStatsBlock {
     test_methods_converted: summary.testMethodsConverted,
     review_items: {
       manual: summary.warnings.filter((w: ReviewItem) => w.severity === "manual").length,
-      warning: summary.warnings.filter((w: ReviewItem) => w.severity === "warning").length,
+      warning: summary.warnings.filter((w: ReviewItem) => w.severity === "warning")
+        .length,
       info: summary.warnings.filter((w: ReviewItem) => w.severity === "info").length,
     },
   };

@@ -139,9 +139,10 @@ function sliceBalanced(source: string, openBraceIdx: number): string | null {
  * Parse `return new Object[][] { {"a", "b"}, {"c", "d"} };` shape.
  * Returns the rows + an `unsafe` flag if the body looks dynamic.
  */
-function parseObjectArrayLiteral(
-  body: string,
-): { rows: DataProviderRow[]; unsafe: boolean } {
+function parseObjectArrayLiteral(body: string): {
+  rows: DataProviderRow[];
+  unsafe: boolean;
+} {
   // Locate the array initialiser.
   const startIdx = body.indexOf("{", body.indexOf("Object"));
   if (startIdx < 0) return { rows: [], unsafe: true };
@@ -163,10 +164,7 @@ function parseObjectArrayLiteral(
   if (outerEnd < 0) return { rows: [], unsafe: true };
   const innerText = body.slice(startIdx + 1, outerEnd);
 
-  const rowMatches = Array.from(
-    innerText.matchAll(/\{([^{}]*)\}/g),
-    (m) => m[1],
-  );
+  const rowMatches = Array.from(innerText.matchAll(/\{([^{}]*)\}/g), (m) => m[1]);
   if (rowMatches.length === 0) return { rows: [], unsafe: true };
 
   const rows: DataProviderRow[] = rowMatches.map((row) => ({

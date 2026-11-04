@@ -9,19 +9,17 @@
  */
 
 export type SourceKind =
-  | "test-class"      // TestNG: contains @Test methods
-  | "page-object"     // Page Object: usually has By/@FindBy fields and WebDriver field/ctor
-  | "base"            // BaseTest / framework helpers
-  | "infrastructure"  // DriverManager / BrowserFactory / ThreadLocal<WebDriver> — Playwright handles via fixtures, skip emission
-  | "java-record"     // v2.0: Java record (POJO data carrier) -> TS interface (+ optional Builder)
-  | "java-enum"       // v2.0: Java enum -> TS enum (aggregated into types/enums.ts)
-  | "java-exception"  // v2.0: extends Exception/Error/Throwable -> class X extends Error (aggregated into types/errors.ts)
-  | "owner-config"    // v2.0: @Config interface w/ @Key fields -> TS interface + env loader
-  | "pojo"            // v2.0: private fields + getters, no @Test/@FindBy -> TS interface
-  | "config"          // pom.xml, testng.xml etc. (carried forward as review notes)
+  | "test-class" // TestNG: contains @Test methods
+  | "page-object" // Page Object: usually has By/@FindBy fields and WebDriver field/ctor
+  | "base" // BaseTest / framework helpers
+  | "infrastructure" // DriverManager / BrowserFactory / ThreadLocal<WebDriver> — Playwright handles via fixtures, skip emission
+  | "java-record" // v2.0: Java record (POJO data carrier) -> TS interface (+ optional Builder)
+  | "java-enum" // v2.0: Java enum -> TS enum (aggregated into types/enums.ts)
+  | "java-exception" // v2.0: extends Exception/Error/Throwable -> class X extends Error (aggregated into types/errors.ts)
+  | "owner-config" // v2.0: @Config interface w/ @Key fields -> TS interface + env loader
+  | "pojo" // v2.0: private fields + getters, no @Test/@FindBy -> TS interface
+  | "config" // pom.xml, testng.xml etc. (carried forward as review notes)
   | "unknown";
-
-
 
 /**
  * v2.0 — folder layout strategy for the converted output.
@@ -60,11 +58,11 @@ export interface FileDisposition {
   output: string | null;
   /** What the converter did with this file. */
   status:
-    | "converted"   // produced a usable .ts file
-    | "stubbed"     // produced a stub the user needs to migrate
-    | "skipped"     // intentionally not emitted (infrastructure, etc.) — see reason
-    | "dropped"     // silently dropped because no detector matched (v1.x bug we are fixing)
-    | "failed";     // parser/emitter crashed on this file
+    | "converted" // produced a usable .ts file
+    | "stubbed" // produced a stub the user needs to migrate
+    | "skipped" // intentionally not emitted (infrastructure, etc.) — see reason
+    | "dropped" // silently dropped because no detector matched (v1.x bug we are fixing)
+    | "failed"; // parser/emitter crashed on this file
   /** Human-readable reason — shows up in the CLI summary table. */
   reason: string;
   /** Severity hint for the CLI summary glyph (✓ / ⚠ / ⊘ / ✗). */

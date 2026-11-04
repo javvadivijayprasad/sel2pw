@@ -56,7 +56,9 @@ export function extractCsharpTestClass(file: JavaFile): TestClassIR {
       // NUnit: SetUp / TearDown / OneTimeSetUp / OneTimeTearDown
       // MSTest: TestInitialize / TestCleanup / ClassInitialize / ClassCleanup
       // SpecFlow: Before / After (when paired with [Binding])
-      /^(SetUp|TearDown|OneTimeSetUp|OneTimeTearDown|TestInitialize|TestCleanup|ClassInitialize|ClassCleanup|Before|After|BeforeScenario|AfterScenario|BeforeFeature|AfterFeature)\b/.test(a),
+      /^(SetUp|TearDown|OneTimeSetUp|OneTimeTearDown|TestInitialize|TestCleanup|ClassInitialize|ClassCleanup|Before|After|BeforeScenario|AfterScenario|BeforeFeature|AfterFeature)\b/.test(
+        a,
+      ),
     );
     if (lifecycleAttr) {
       lifecycle.push({
@@ -66,7 +68,9 @@ export function extractCsharpTestClass(file: JavaFile): TestClassIR {
       });
       continue;
     }
-    const testAttr = m.attributes.find((a) => /^(Test|TestCase|TestMethod|Fact|Theory)\b/.test(a));
+    const testAttr = m.attributes.find((a) =>
+      /^(Test|TestCase|TestMethod|Fact|Theory)\b/.test(a),
+    );
     if (testAttr) {
       testMethods.push({
         name: m.name,
@@ -155,10 +159,7 @@ function extractLocatorFieldsCsharp(source: string): LocatorField[] {
   return fields;
 }
 
-function extractUnknownFieldsCsharp(
-  source: string,
-  known: LocatorField[],
-): string[] {
+function extractUnknownFieldsCsharp(source: string, known: LocatorField[]): string[] {
   const knownNames = new Set(known.map((f) => f.name));
   const fieldPattern =
     /^[\t ]*(?:private|protected|public|internal)\s+(?:readonly\s+)?(\w[\w<>,\s]*?)\s+(\w+)\s*(?:=[^;]+)?;/gm;
@@ -447,10 +448,24 @@ function normalizeBy(raw: string): ByStrategy {
 
 function normaliseCsharpLifecycle(raw: string): TestNgLifecycle {
   // Map every C# lifecycle attribute onto the TestNG vocabulary the emitter speaks.
-  if (raw === "SetUp" || raw === "TestInitialize" || raw === "BeforeScenario" || raw === "Before") return "BeforeMethod";
-  if (raw === "TearDown" || raw === "TestCleanup" || raw === "AfterScenario" || raw === "After") return "AfterMethod";
-  if (raw === "OneTimeSetUp" || raw === "ClassInitialize" || raw === "BeforeFeature") return "BeforeClass";
-  if (raw === "OneTimeTearDown" || raw === "ClassCleanup" || raw === "AfterFeature") return "AfterClass";
+  if (
+    raw === "SetUp" ||
+    raw === "TestInitialize" ||
+    raw === "BeforeScenario" ||
+    raw === "Before"
+  )
+    return "BeforeMethod";
+  if (
+    raw === "TearDown" ||
+    raw === "TestCleanup" ||
+    raw === "AfterScenario" ||
+    raw === "After"
+  )
+    return "AfterMethod";
+  if (raw === "OneTimeSetUp" || raw === "ClassInitialize" || raw === "BeforeFeature")
+    return "BeforeClass";
+  if (raw === "OneTimeTearDown" || raw === "ClassCleanup" || raw === "AfterFeature")
+    return "AfterClass";
   return "BeforeMethod";
 }
 

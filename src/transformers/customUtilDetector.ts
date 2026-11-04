@@ -74,7 +74,8 @@ const NAME_PATTERNS: { pattern: RegExp; kind: DetectedUtility["kind"] }[] = [
   // The earlier `^(Driver|Element|Browser)(Base|...)?$` rule catches the
   // bare forms; this catches everything else ending in those suffixes.
   {
-    pattern: /(Utility|Utils|Util|Helper|Reader|Writer|Loader|Builder|Adapter|Factory|Decorator|Wrapper|Logger|Interceptor|Library|Suite|Service|Driver|Actions?)$/,
+    pattern:
+      /(Utility|Utils|Util|Helper|Reader|Writer|Loader|Builder|Adapter|Factory|Decorator|Wrapper|Logger|Interceptor|Library|Suite|Service|Driver|Actions?)$/,
     kind: "test-util",
   },
   // Java enums and POJO/model/data classes — these don't translate to
@@ -82,7 +83,8 @@ const NAME_PATTERNS: { pattern: RegExp; kind: DetectedUtility["kind"] }[] = [
   // Until we have a proper `model` kind, emit as test-util stubs with
   // appropriate guidance.
   {
-    pattern: /(Type|Model|Dto|Bean|Parameters|Param|Details|Info|Data|Properties|Config|Result|Response|Request|Payload)$/,
+    pattern:
+      /(Type|Model|Dto|Bean|Parameters|Param|Details|Info|Data|Properties|Config|Result|Response|Request|Payload)$/,
     kind: "test-util",
   },
   // Read* / Write* / Parse* prefixes — Excel/JSON/Property readers.
@@ -109,7 +111,8 @@ const NAME_PATTERNS: { pattern: RegExp; kind: DetectedUtility["kind"] }[] = [
   },
   // Original narrow root-word matches (kept as last resort for short names).
   {
-    pattern: /^(Test|Common|File|Json|Xml|Excel|Db|Database|Selenium|String|Date|Property|Properties)(Util|Utils|Helper|Reader|Loader|Manager)?$/,
+    pattern:
+      /^(Test|Common|File|Json|Xml|Excel|Db|Database|Selenium|String|Date|Property|Properties)(Util|Utils|Helper|Reader|Loader|Manager)?$/,
     kind: "test-util",
   },
   // Custom Java exception classes (FrameworkException, InvalidPathException,
@@ -161,7 +164,8 @@ const SHAPE_PATTERNS: { pattern: RegExp; kind: DetectedUtility["kind"] }[] = [
   },
   // ITestListener / IReporter / IAnnotationTransformer / IInvokedMethodListener from TestNG.
   {
-    pattern: /\bimplements\s+(?:I(?:Test)?Listener|IReporter|ITestListener|ISuiteListener|IAnnotationTransformer|IInvokedMethodListener|IExecutionListener|IConfigurationListener)\b/,
+    pattern:
+      /\bimplements\s+(?:I(?:Test)?Listener|IReporter|ITestListener|ISuiteListener|IAnnotationTransformer|IInvokedMethodListener|IExecutionListener|IConfigurationListener)\b/,
     kind: "reporter",
   },
   // Java enum keyword — these are clearly not page objects or tests.
@@ -177,7 +181,8 @@ const SHAPE_PATTERNS: { pattern: RegExp; kind: DetectedUtility["kind"] }[] = [
   // Overrides any of TestNG's ITestListener callbacks — strong signal of a
   // listener even if the `implements` clause was elsewhere or missing.
   {
-    pattern: /\b(?:public|protected)\s+void\s+(onTestFailure|onTestSuccess|onTestStart|onTestSkipped|onFinish|onStart|onConfigurationFailure|onConfigurationSuccess)\s*\(\s*ITestResult\b/,
+    pattern:
+      /\b(?:public|protected)\s+void\s+(onTestFailure|onTestSuccess|onTestStart|onTestSkipped|onFinish|onStart|onConfigurationFailure|onConfigurationSuccess)\s*\(\s*ITestResult\b/,
     kind: "event-listener",
   },
 ];
@@ -235,18 +240,34 @@ export function emitUtilityStub(
       lines.push(` *   - page.waitForLoadState(...) for navigation barriers.`);
       break;
     case "event-listener":
-      lines.push(` *   - playwright.config.ts → reporter            (use html / list / json reporters)`);
-      lines.push(` *   - test.beforeEach / test.afterEach hooks      (for per-test instrumentation)`);
-      lines.push(` *   - page.on('console' | 'pageerror' | 'request') (for browser-side events)`);
+      lines.push(
+        ` *   - playwright.config.ts → reporter            (use html / list / json reporters)`,
+      );
+      lines.push(
+        ` *   - test.beforeEach / test.afterEach hooks      (for per-test instrumentation)`,
+      );
+      lines.push(
+        ` *   - page.on('console' | 'pageerror' | 'request') (for browser-side events)`,
+      );
       break;
     case "reporter":
-      lines.push(` *   - playwright.config.ts → reporter: [['html'], ['list']]   (built-ins)`);
-      lines.push(` *   - allure-playwright npm package                            (Allure equivalent)`);
-      lines.push(` *   - playwright/.cache → trace.zip viewer                     (per-test traces)`);
+      lines.push(
+        ` *   - playwright.config.ts → reporter: [['html'], ['list']]   (built-ins)`,
+      );
+      lines.push(
+        ` *   - allure-playwright npm package                            (Allure equivalent)`,
+      );
+      lines.push(
+        ` *   - playwright/.cache → trace.zip viewer                     (per-test traces)`,
+      );
       break;
     case "test-util":
-      lines.push(` *   - port pure helper functions to plain TS modules under tests/helpers/.`);
-      lines.push(` *   - file/Excel/JSON loaders → use 'fs/promises', 'xlsx', or fixture-data.`);
+      lines.push(
+        ` *   - port pure helper functions to plain TS modules under tests/helpers/.`,
+      );
+      lines.push(
+        ` *   - file/Excel/JSON loaders → use 'fs/promises', 'xlsx', or fixture-data.`,
+      );
       lines.push(` *   - String/Date helpers → standard JS APIs or 'date-fns'.`);
       break;
     default:
@@ -261,7 +282,9 @@ export function emitUtilityStub(
   lines.push(`export class ${util.className} {`);
   lines.push(`  /** @deprecated Migrate call sites — see file header. */`);
   lines.push(`  static notImplemented(method = "<method>"): never {`);
-  lines.push("    throw new Error(`${this.name}.${method} is a sel2pw stub — migrate this call site to a Playwright fixture.`);");
+  lines.push(
+    "    throw new Error(`${this.name}.${method} is a sel2pw stub — migrate this call site to a Playwright fixture.`);",
+  );
   lines.push(`  }`);
 
   // v2.0 consolidation — extract `public static` method signatures from the

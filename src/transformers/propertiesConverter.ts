@@ -13,9 +13,7 @@ import { ConvertedFile } from "../types";
  * access in the converted Playwright project.
  */
 
-export async function convertPropertiesFiles(
-  inputDir: string,
-): Promise<ConvertedFile[]> {
+export async function convertPropertiesFiles(inputDir: string): Promise<ConvertedFile[]> {
   const matches = await fg(["**/*.properties"], {
     cwd: inputDir,
     absolute: true,
@@ -129,8 +127,6 @@ function camelCase(s: string): string {
   return s
     .toLowerCase()
     .split(/[_-]/)
-    .map((part, i) =>
-      i === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1),
-    )
+    .map((part, i) => (i === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1)))
     .join("");
 }

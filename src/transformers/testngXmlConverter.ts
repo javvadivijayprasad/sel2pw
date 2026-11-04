@@ -52,13 +52,9 @@ export function convertTestngXml(xml: string): {
   lines.push(`import { defineConfig, devices } from '@playwright/test';`);
   lines.push("");
   lines.push(`/**`);
-  lines.push(
-    ` * Generated from your testng.xml. Each <suite> becomes a Playwright`,
-  );
+  lines.push(` * Generated from your testng.xml. Each <suite> becomes a Playwright`);
   lines.push(` * project; <groups>/<run>/<include name="X"/> map to grep \`@X\`.`);
-  lines.push(
-    ` * To run just one suite:  npx playwright test --project="<suite-name>"`,
-  );
+  lines.push(` * To run just one suite:  npx playwright test --project="<suite-name>"`);
   lines.push(` */`);
   lines.push(`export default defineConfig({`);
   lines.push(`  testDir: './tests',`);

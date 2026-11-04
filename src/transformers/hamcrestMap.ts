@@ -29,16 +29,15 @@ const MATCHERS: Record<string, (actual: string, args: string[]) => string> = {
   containsString: (a, args) => `expect(${a}).toContain(${args[0]});`,
   startsWith: (a, args) => `expect(${a}.startsWith(${args[0]})).toBe(true);`,
   endsWith: (a, args) => `expect(${a}.endsWith(${args[0]})).toBe(true);`,
-  containsInAnyOrder: (a, args) => `expect(${a}).toEqual(expect.arrayContaining([${args.join(", ")}]));`,
+  containsInAnyOrder: (a, args) =>
+    `expect(${a}).toEqual(expect.arrayContaining([${args.join(", ")}]));`,
   contains: (a, args) => `expect(${a}).toEqual([${args.join(", ")}]);`,
   empty: (a) => `expect(${a}).toHaveLength(0);`,
   hasSize: (a, args) => `expect(${a}).toHaveLength(${args[0]});`,
   greaterThan: (a, args) => `expect(${a}).toBeGreaterThan(${args[0]});`,
-  greaterThanOrEqualTo: (a, args) =>
-    `expect(${a}).toBeGreaterThanOrEqual(${args[0]});`,
+  greaterThanOrEqualTo: (a, args) => `expect(${a}).toBeGreaterThanOrEqual(${args[0]});`,
   lessThan: (a, args) => `expect(${a}).toBeLessThan(${args[0]});`,
-  lessThanOrEqualTo: (a, args) =>
-    `expect(${a}).toBeLessThanOrEqual(${args[0]});`,
+  lessThanOrEqualTo: (a, args) => `expect(${a}).toBeLessThanOrEqual(${args[0]});`,
 };
 
 export function applyHamcrestRewrites(body: string): string {

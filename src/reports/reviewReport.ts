@@ -41,15 +41,17 @@ export async function writeReviewReport(
   lines.push(
     `  - warning: ${summary.warnings.filter((w) => w.severity === "warning").length}`,
   );
-  lines.push(
-    `  - info: ${summary.warnings.filter((w) => w.severity === "info").length}`,
-  );
+  lines.push(`  - info: ${summary.warnings.filter((w) => w.severity === "info").length}`);
   lines.push("");
   lines.push("## Severity legend");
   lines.push("");
-  lines.push("- **manual** — auto-conversion not possible; you must rewrite this section.");
+  lines.push(
+    "- **manual** — auto-conversion not possible; you must rewrite this section.",
+  );
   lines.push("- **warning** — converted but please double-check semantics.");
-  lines.push("- **info** — heads-up about a non-trivial mapping (e.g. WebDriverWait removed).");
+  lines.push(
+    "- **info** — heads-up about a non-trivial mapping (e.g. WebDriverWait removed).",
+  );
   lines.push("");
   lines.push("## Items by file");
   lines.push("");
@@ -96,7 +98,9 @@ export async function writeReviewReport(
   lines.push("| Selenium / TestNG | Playwright TS |");
   lines.push("| --- | --- |");
   lines.push("| `driver.get(url)` | `await page.goto(url)` |");
-  lines.push("| `driver.findElement(By.id(\"x\")).click()` | `await page.locator('#x').click()` |");
+  lines.push(
+    "| `driver.findElement(By.id(\"x\")).click()` | `await page.locator('#x').click()` |",
+  );
   lines.push("| `element.sendKeys(\"...\")` | `await locator.fill('...')` |");
   lines.push("| `element.getText()` | `await locator.innerText()` |");
   lines.push("| `Assert.assertEquals(a, b)` | `expect(a).toBe(b)` |");
@@ -104,8 +108,12 @@ export async function writeReviewReport(
   lines.push("| `@BeforeMethod` | `test.beforeEach(...)` |");
   lines.push("| `@DataProvider` | parameterised loop over rows |");
   lines.push("| `WebDriverWait.until(...)` | _removed — Playwright auto-waits_ |");
-  lines.push("| `JavascriptExecutor.executeScript(js)` | `await page.evaluate(() => js)` |");
-  lines.push("| `Actions(driver).moveToElement(el).perform()` | `await locator.hover()` |");
+  lines.push(
+    "| `JavascriptExecutor.executeScript(js)` | `await page.evaluate(() => js)` |",
+  );
+  lines.push(
+    "| `Actions(driver).moveToElement(el).perform()` | `await locator.hover()` |",
+  );
   lines.push("");
 
   await fs.writeFile(reportPath, lines.join("\n"), "utf8");

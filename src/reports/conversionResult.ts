@@ -1,11 +1,6 @@
 import * as path from "path";
 import * as fs from "fs-extra";
-import {
-  ConversionSummary,
-  ConvertedFile,
-  JavaFile,
-  ReviewItem,
-} from "../types";
+import { ConversionSummary, ConvertedFile, JavaFile, ReviewItem } from "../types";
 import { getParserStats, ParserStats } from "../parser/javaAst";
 
 /**
@@ -28,7 +23,18 @@ export interface FileOutcome {
   /** Path relative to outputDir if converted, else null. */
   output: string | null;
   /** What the scanner classified this file as. */
-  sourceKind: "page-object" | "test-class" | "base" | "infrastructure" | "java-record" | "java-enum" | "java-exception" | "owner-config" | "pojo" | "config" | "unknown";
+  sourceKind:
+    | "page-object"
+    | "test-class"
+    | "base"
+    | "infrastructure"
+    | "java-record"
+    | "java-enum"
+    | "java-exception"
+    | "owner-config"
+    | "pojo"
+    | "config"
+    | "unknown";
   /** Final disposition. */
   status: "converted" | "stubbed" | "skipped" | "failed";
   /** Why the file got this status — one short sentence. */
@@ -85,7 +91,15 @@ export async function writeConversionResult(args: BuildResultArgs): Promise<stri
 }
 
 export function buildConversionResult(args: BuildResultArgs): ConversionResultJson {
-  const { inputDir, outputDir, sourceStack, scannedFiles, convertedFiles, warnings, summary } = args;
+  const {
+    inputDir,
+    outputDir,
+    sourceStack,
+    scannedFiles,
+    convertedFiles,
+    warnings,
+    summary,
+  } = args;
 
   // Index converted files by output basename for quick lookup. The emitted
   // file paths are kebab-cased (login.spec.ts, action-driver.page.ts) while
@@ -156,11 +170,12 @@ function matchConverted(
   byOutputName: Map<string, ConvertedFile>,
   byStem: Map<string, ConvertedFile>,
 ): ConvertedFile | undefined {
-  const suffixed = kind === "page-object"
-    ? `${stem}.page`
-    : kind === "test-class"
-      ? `${stem}.spec`
-      : null;
+  const suffixed =
+    kind === "page-object"
+      ? `${stem}.page`
+      : kind === "test-class"
+        ? `${stem}.spec`
+        : null;
   if (suffixed) {
     const hit = byOutputName.get(suffixed);
     if (hit) return hit;
@@ -190,19 +205,19 @@ function fileOutcomeFor(
   //   - page objects: kebab then strip trailing `-page(s)`.
   // Pre-fix this used a PascalCase strip-then-kebab order which leaked
   // a trailing dash on names like `API_Test` (see selenium12 + 15).
-  const stem = file.kind === "base"
-    ? "fixtures"
-    : kebab(file.className).replace(
-        /-(tests?(?:-?case)?|page-?objects?|pages?|screens?|views?)$/,
-        "",
-      );
+  const stem =
+    file.kind === "base"
+      ? "fixtures"
+      : kebab(file.className).replace(
+          /-(tests?(?:-?case)?|page-?objects?|pages?|screens?|views?)$/,
+          "",
+        );
   const matched = matchConverted(file.kind, stem, byOutputName, byStem);
 
   if (file.kind === "unknown") {
     // Either promoted to a stub by customUtilDetector, or genuinely skipped.
     const stubbed = warnings.some(
-      (w) =>
-        w.file === file.className && /tests\/_legacy-stubs/.test(w.message),
+      (w) => w.file === file.className && /tests\/_legacy-stubs/.test(w.message),
     );
     if (stubbed) {
       return {
@@ -237,7 +252,8 @@ function fileOutcomeFor(
       reason: matched
         ? "Converted but contains items that need manual edits."
         : "Conversion failed for this file.",
-      action: fileWarnings.find((w) => w.severity === "manual")?.message ??
+      action:
+        fileWarnings.find((w) => w.severity === "manual")?.message ??
         "See CONVERSION_REVIEW.md for the manual items on this file.",
       severity: "manual",
     };
@@ -253,8 +269,8 @@ function fileOutcomeFor(
         ? "Converted; one or more warnings to verify."
         : "Converted cleanly.",
       action: hasWarning
-        ? fileWarnings.find((w) => w.severity === "warning")?.message ??
-          "See CONVERSION_REVIEW.md for the warning details."
+        ? (fileWarnings.find((w) => w.severity === "warning")?.message ??
+          "See CONVERSION_REVIEW.md for the warning details.")
         : "No action required.",
       severity: hasWarning ? "warning" : "ok",
     };

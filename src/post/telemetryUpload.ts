@@ -33,7 +33,12 @@ interface AggregatePayload {
   successRate: number;
   byFailureKind: Record<string, number>;
   byFileKind: Record<string, number>;
-  topPatterns: { signature: string; count: number; failureKind: string; fileKind: string }[];
+  topPatterns: {
+    signature: string;
+    count: number;
+    failureKind: string;
+    fileKind: string;
+  }[];
 }
 
 export async function uploadAggregateTelemetry(
@@ -76,7 +81,11 @@ export async function uploadAggregateTelemetry(
       return { ok: false, reason: `HTTP ${statusCode}` };
     }
     logger.info(
-      { endpoint: config.endpoint, totalFailures: stats.totalFailures, patterns: patterns.length },
+      {
+        endpoint: config.endpoint,
+        totalFailures: stats.totalFailures,
+        patterns: patterns.length,
+      },
       "telemetry uploaded",
     );
     return { ok: true };

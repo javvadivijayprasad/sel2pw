@@ -36,16 +36,11 @@ describe("real-world fixtures", () => {
     });
 
     it("emits a Page Object using the @FindBy fields", async () => {
-      const list = await fs
-        .readdir(path.join(outputDir, "pages"))
-        .catch(() => []);
+      const list = await fs.readdir(path.join(outputDir, "pages")).catch(() => []);
       const pageFile = list.find((n) => n.endsWith(".page.ts"));
       expect(pageFile, "expected a page object .ts file").toBeTruthy();
       if (!pageFile) return;
-      const src = await fs.readFile(
-        path.join(outputDir, "pages", pageFile),
-        "utf8",
-      );
+      const src = await fs.readFile(path.join(outputDir, "pages", pageFile), "utf8");
       // All four locators present + correct types.
       expect(src).toContain("usernameInput: Locator");
       expect(src).toContain("passwordInput: Locator");
@@ -102,9 +97,7 @@ describe("real-world fixtures", () => {
 
   describe("analyze() over Cucumber bundle classifies correctly", async () => {
     it("classifies feature files separately from step defs", async () => {
-      const result = await analyze(
-        path.join(FIXTURE_ROOT, "bdd-cucumber", "input"),
-      );
+      const result = await analyze(path.join(FIXTURE_ROOT, "bdd-cucumber", "input"));
       // The Cucumber stretch path is opt-in; analyze() at least sees the
       // step-defs Java file as non-page-object.
       const stepFile = result.files.find((f) => f.className === "LoginSteps");

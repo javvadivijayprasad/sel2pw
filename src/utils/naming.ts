@@ -63,12 +63,24 @@ export function javaTypeToTs(javaType: string): string {
   // hundreds of TS1005 errors through the rest of the file.
   const t = javaType
     .trim()
-    .replace(/^(?:public|protected|private|static|final|synchronized|abstract|default|native|strictfp|transient|volatile)\s+/g, "")
+    .replace(
+      /^(?:public|protected|private|static|final|synchronized|abstract|default|native|strictfp|transient|volatile)\s+/g,
+      "",
+    )
     .trim();
   if (!t) return "void";
   if (t === "void") return "void";
   if (t === "String") return "string";
-  if (t === "int" || t === "long" || t === "short" || t === "double" || t === "float" || t === "Integer" || t === "Long" || t === "Double") {
+  if (
+    t === "int" ||
+    t === "long" ||
+    t === "short" ||
+    t === "double" ||
+    t === "float" ||
+    t === "Integer" ||
+    t === "Long" ||
+    t === "Double"
+  ) {
     return "number";
   }
   if (t === "boolean" || t === "Boolean") return "boolean";

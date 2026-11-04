@@ -117,10 +117,7 @@ export async function convertBddFlatten(
     for (const step of allSteps) {
       const matched = matchStepToDef(step.text, stepDefs);
       if (matched) {
-        const transformed = transformMethodBody(
-          matched.def.body,
-          matched.def.sourceFile,
-        );
+        const transformed = transformMethodBody(matched.def.body, matched.def.sourceFile);
         warnings.push(...transformed.warnings);
         step.matchedBody = transformed.body;
         step.matchedParams = matched.params;
@@ -280,10 +277,7 @@ interface MatchedStep {
   params: string[];
 }
 
-function matchStepToDef(
-  stepText: string,
-  defs: StepDef[],
-): MatchedStep | null {
+function matchStepToDef(stepText: string, defs: StepDef[]): MatchedStep | null {
   for (const def of defs) {
     const m = stepText.match(def.regex);
     if (m) {
@@ -308,12 +302,8 @@ function emitFlattenedSpec(
   // (A future patch will scan inlined step bodies for `new XxxPage(...)`
   // and emit the imports automatically.)
   lines.push("");
-  lines.push(
-    `// Note: import any Page Object classes you reference inside the inlined`,
-  );
-  lines.push(
-    `// step bodies, e.g. \`import { LoginPage } from '../pages/login.page';\``,
-  );
+  lines.push(`// Note: import any Page Object classes you reference inside the inlined`);
+  lines.push(`// step bodies, e.g. \`import { LoginPage } from '../pages/login.page';\``);
   lines.push("");
 
   if (feature.tags.length > 0) {
@@ -336,9 +326,7 @@ function emitFlattenedSpec(
     }
 
     if (scenario.type === "scenario") {
-      lines.push(
-        `  test(${JSON.stringify(scenario.name)}, async ({ page }) => {`,
-      );
+      lines.push(`  test(${JSON.stringify(scenario.name)}, async ({ page }) => {`);
       emitInlinedSteps(scenario.steps, "    ", lines);
       lines.push("  });");
       lines.push("");
@@ -363,8 +351,8 @@ function emitFlattenedSpec(
           `  const ${camelCase(dataKey)}Data = require(${JSON.stringify(dataImportPath)}) as Array<Record<string, string>>;`,
         );
         lines.push(`  for (const row of ${camelCase(dataKey)}Data) {`);
-        const titleTemplate = scenario.examples!.headers
-          .map((h) => `\${row.${h}}`)
+        const titleTemplate = scenario
+          .examples!.headers.map((h) => `\${row.${h}}`)
           .join(", ");
         lines.push(
           `    test(\`${scenario.name} (${titleTemplate})\`, async ({ page }) => {`,
@@ -442,7 +430,5 @@ function kebab(s: string): string {
 }
 
 function camelCase(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[-_](.)/g, (_, c) => c.toUpperCase());
+  return s.toLowerCase().replace(/[-_](.)/g, (_, c) => c.toUpperCase());
 }

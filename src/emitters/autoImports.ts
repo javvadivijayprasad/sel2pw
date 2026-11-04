@@ -32,9 +32,7 @@ export interface AutoImportSource {
  * Build the class-name → output-path index from all converted files in the
  * current run. Call once per conversion, share across emitters.
  */
-export function buildAutoImportIndex(
-  converted: ConvertedFile[],
-): AutoImportSource[] {
+export function buildAutoImportIndex(converted: ConvertedFile[]): AutoImportSource[] {
   const out: AutoImportSource[] = [];
   for (const cf of converted) {
     if (!cf.relPath || !cf.source) continue;
@@ -74,9 +72,27 @@ export function detectMissingImports(
   const skip = new Set(excludeClassNames);
   // Always skip Playwright + JS built-ins so we never emit duplicate imports.
   for (const k of [
-    "Page", "Locator", "expect", "test", "Browser", "BrowserContext",
-    "String", "Number", "Boolean", "Array", "Object", "Promise", "Set",
-    "Map", "Date", "Math", "JSON", "Error", "RegExp", "Symbol", "console",
+    "Page",
+    "Locator",
+    "expect",
+    "test",
+    "Browser",
+    "BrowserContext",
+    "String",
+    "Number",
+    "Boolean",
+    "Array",
+    "Object",
+    "Promise",
+    "Set",
+    "Map",
+    "Date",
+    "Math",
+    "JSON",
+    "Error",
+    "RegExp",
+    "Symbol",
+    "console",
   ]) {
     skip.add(k);
   }
@@ -90,7 +106,11 @@ export function detectMissingImports(
   while ((im = existingImportRe.exec(body)) !== null) {
     for (const part of im[1].split(",")) {
       // Handle `X as Y` (use the local name Y) and `X` (use X).
-      const local = part.trim().split(/\s+as\s+/).pop()!.trim();
+      const local = part
+        .trim()
+        .split(/\s+as\s+/)
+        .pop()!
+        .trim();
       if (local) skip.add(local);
     }
   }

@@ -90,13 +90,10 @@ interface ParsedEnum {
 
 function parseEnum(source: string, fallbackName: string): ParsedEnum {
   // Strip block + line comments so they don't confuse the body scan.
-  const stripped = source
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/\/\/[^\n]*/g, "");
+  const stripped = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
   // Find the enum name.
-  const nameRe =
-    /\b(?:public\s+|protected\s+|private\s+)?enum\s+(\w+)\b/m;
+  const nameRe = /\b(?:public\s+|protected\s+|private\s+)?enum\s+(\w+)\b/m;
   const nameMatch = stripped.match(nameRe);
   const name = nameMatch ? nameMatch[1] : fallbackName;
 
@@ -170,9 +167,7 @@ function parseEnum(source: string, fallbackName: string): ParsedEnum {
   return { name, members, skippedMethods };
 }
 
-function parseMember(
-  raw: string,
-): { name: string; value: string } | null {
+function parseMember(raw: string): { name: string; value: string } | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
 
@@ -216,8 +211,8 @@ function renderEnum(p: ParsedEnum): string {
   if (p.skippedMethods.length > 0) {
     lines.push(
       `// TODO(sel2pw): the Java enum \`${p.name}\` had additional methods/initializers ` +
-      `that TS enums can't express: ${p.skippedMethods.join(", ")}. ` +
-      `Port them as standalone helper functions if needed.`,
+        `that TS enums can't express: ${p.skippedMethods.join(", ")}. ` +
+        `Port them as standalone helper functions if needed.`,
     );
   }
   lines.push(`export enum ${p.name} {`);

@@ -52,12 +52,7 @@ import {
 import * as crypto from "crypto";
 import * as fs from "fs-extra";
 import * as fsPath from "path";
-import {
-  ConversionSummary,
-  ConvertedFile,
-  JavaFile,
-  ReviewItem,
-} from "./types";
+import { ConversionSummary, ConvertedFile, JavaFile, ReviewItem } from "./types";
 
 export interface ConvertOptions {
   inputDir: string;
@@ -149,8 +144,7 @@ export async function convert(opts: ConvertOptions): Promise<{
 }> {
   const inputDir = path.resolve(opts.inputDir);
   const outputDir = path.resolve(opts.outputDir);
-  const templatesDir =
-    opts.templatesDir ?? path.resolve(__dirname, "..", "templates");
+  const templatesDir = opts.templatesDir ?? path.resolve(__dirname, "..", "templates");
 
   // Detect source stack (java-testng / java-bdd-cucumber / csharp-nunit /
   // csharp-bdd-specflow). The user can override via opts.forceStack.
@@ -293,7 +287,10 @@ export async function convert(opts: ConvertOptions): Promise<{
           if (telemetry) {
             const sig = patternHash(
               "unknown-classification",
-              file.className.replace(/[A-Z]/g, "X").replace(/[a-z]/g, "x").replace(/\d/g, "N"),
+              file.className
+                .replace(/[A-Z]/g, "X")
+                .replace(/[a-z]/g, "x")
+                .replace(/\d/g, "N"),
             );
             telemetry.recordFailure({
               jobId: telemetryJobId,
@@ -416,7 +413,10 @@ export async function convert(opts: ConvertOptions): Promise<{
       if (w.severity !== "manual") continue;
       const sig = patternHash(
         "manual-review",
-        w.message.replace(/['"][^'"]+['"]/g, '"…"').replace(/\d+/g, "N").slice(0, 200),
+        w.message
+          .replace(/['"][^'"]+['"]/g, '"…"')
+          .replace(/\d+/g, "N")
+          .slice(0, 200),
       );
       telemetry.recordFailure({
         jobId: telemetryJobId,
@@ -464,9 +464,10 @@ export async function convert(opts: ConvertOptions): Promise<{
       // the original behaviour (playwright-bdd skeleton + .feature files).
       // `flatten` produces pure Playwright Test specs with each Scenario
       // as a test() call and Scenario Outline Examples externalised as JSON.
-      const bddOut = opts.bddMode === "flatten"
-        ? await convertBddFlatten(inputDir, javaFiles)
-        : await convertBdd(inputDir, javaFiles);
+      const bddOut =
+        opts.bddMode === "flatten"
+          ? await convertBddFlatten(inputDir, javaFiles)
+          : await convertBdd(inputDir, javaFiles);
       converted.push(...bddOut.files);
       warnings.push(...bddOut.warnings);
     } catch (err: any) {
@@ -550,7 +551,8 @@ export async function convert(opts: ConvertOptions): Promise<{
     postFiles = postFiles.map((cf) => {
       if (!cf.relPath.endsWith(".ts")) return cf;
       // Identify the class defined inside this file so we don't self-import.
-      const ownClass = (cf.source.match(/^export\s+(?:abstract\s+)?class\s+(\w+)/m) ?? [])[1];
+      const ownClass = (cf.source.match(/^export\s+(?:abstract\s+)?class\s+(\w+)/m) ??
+        [])[1];
       const exclude = new Set<string>();
       if (ownClass) exclude.add(ownClass);
       const missing = detectMissingImports(cf.source, cf.relPath, importIndex, exclude);
@@ -561,7 +563,8 @@ export async function convert(opts: ConvertOptions): Promise<{
       for (let i = 0; i < lines.length; i += 1) {
         if (/^\s*import\s+/.test(lines[i])) insertAt = i + 1;
         else if (insertAt > 0 && lines[i].trim() === "") break;
-        else if (insertAt === 0 && lines[i].trim() !== "" && !/^\s*\/\//.test(lines[i])) break;
+        else if (insertAt === 0 && lines[i].trim() !== "" && !/^\s*\/\//.test(lines[i]))
+          break;
       }
       const newLines = [
         ...lines.slice(0, insertAt),
@@ -630,9 +633,7 @@ export async function convert(opts: ConvertOptions): Promise<{
   const dryRunResult = opts.dryRun
     ? buildConversionResult(conversionResultArgs)
     : undefined;
-  const dryRunPreview = opts.dryRun
-    ? renderFileMapping(conversionResultArgs)
-    : undefined;
+  const dryRunPreview = opts.dryRun ? renderFileMapping(conversionResultArgs) : undefined;
 
   return { summary, files: postFiles, dryRunPreview, dryRunResult };
 }

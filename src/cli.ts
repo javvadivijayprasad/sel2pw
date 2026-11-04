@@ -39,145 +39,206 @@ program
   .requiredOption("-o, --out <outputDir>", "Output directory for the Playwright project.")
   .option("--templates <dir>", "Override templates directory.")
   .option("--dry-run", "Print what would be converted without writing files.")
-  .option("--emit-self-healing-shim", "Wrap locators in healOrThrow() for runtime self-healing.")
-  .option("--emit-auth-setup", "Generate tests/auth.setup.ts when a LoginPage is detected.")
+  .option(
+    "--emit-self-healing-shim",
+    "Wrap locators in healOrThrow() for runtime self-healing.",
+  )
+  .option(
+    "--emit-auth-setup",
+    "Generate tests/auth.setup.ts when a LoginPage is detected.",
+  )
   .option("--format", "Run Prettier over generated TypeScript.")
-  .option("--preview-format <mode>", "Dry-run preview format: markdown (default) | json.", "markdown")
+  .option(
+    "--preview-format <mode>",
+    "Dry-run preview format: markdown (default) | json.",
+    "markdown",
+  )
   .option("--validate", "Run `tsc --noEmit` over generated project as a gate.")
-  .option("--validate-eslint", "Run ESLint over generated project (requires eslint config in output).")
+  .option(
+    "--validate-eslint",
+    "Run ESLint over generated project (requires eslint config in output).",
+  )
   .option(
     "--bdd-mode <mode>",
     "BDD output mode: 'preserve' (default — keep .feature files + playwright-bdd skeleton) or 'flatten' (drop .feature files; one Playwright test() per Scenario; Scenario Outline Examples externalised as JSON).",
     "preserve",
   )
-  .option("--no-todo-markers", "Skip inserting // TODO(sel2pw): markers in generated code.")
-  .option("--pom-style <style>", "Page Object style: 'instance' (default) or 'factory' (page-bag fixture).", "instance")
-  .option("--layout <layout>", "Output folder layout. 'v2-organized' (default, canonical Playwright structure: pages/, tests/fixtures/, types/, data/) or 'v1-flat' (legacy 1.x shape — kept for one release for migration).", "v2-organized")
-  .option("--lang <lang>", "Force source language: 'java' or 'csharp'. Auto-detected when omitted.")
+  .option(
+    "--no-todo-markers",
+    "Skip inserting // TODO(sel2pw): markers in generated code.",
+  )
+  .option(
+    "--pom-style <style>",
+    "Page Object style: 'instance' (default) or 'factory' (page-bag fixture).",
+    "instance",
+  )
+  .option(
+    "--layout <layout>",
+    "Output folder layout. 'v2-organized' (default, canonical Playwright structure: pages/, tests/fixtures/, types/, data/) or 'v1-flat' (legacy 1.x shape — kept for one release for migration).",
+    "v2-organized",
+  )
+  .option(
+    "--lang <lang>",
+    "Force source language: 'java' or 'csharp'. Auto-detected when omitted.",
+  )
   .option("--llm-provider <p>", "LLM fallback provider: anthropic | openai | gemini.")
-  .option("--llm-key <k>", "API key for the LLM provider (or set ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY env).")
+  .option(
+    "--llm-key <k>",
+    "API key for the LLM provider (or set ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY env).",
+  )
   .option("--llm-model <m>", "Override the default LLM model.")
-  .option("--llm-fallback", "Run the configured LLM over files the AST pipeline couldn't classify.")
-  .option("--diff", "Like --dry-run but prints unified diffs against an existing output dir.")
-  .action(async (inputDir: string, opts: {
-    out: string;
-    templates?: string;
-    dryRun?: boolean;
-    emitSelfHealingShim?: boolean;
-    emitAuthSetup?: boolean;
-    format?: boolean;
-    previewFormat?: "markdown" | "json" | string;
-    validate?: boolean;
-    validateEslint?: boolean;
-    bddMode?: "preserve" | "flatten";
-    todoMarkers?: boolean;
-    pomStyle?: "instance" | "factory";
-    layout?: "v1-flat" | "v2-organized";
-    lang?: "java" | "csharp";
-    llmProvider?: "anthropic" | "openai" | "gemini";
-    llmKey?: string;
-    llmModel?: string;
-    llmFallback?: boolean;
-    diff?: boolean;
-  }) => {
-    try {
-      if (!["markdown", "json"].includes(opts.previewFormat ?? "markdown")) {
-        console.error(`Invalid preview format: ${opts.previewFormat}. Choose markdown or json.`);
-        process.exitCode = 2;
-        return;
-      }
-      if (opts.previewFormat === "json" && (!opts.dryRun || opts.diff)) {
-        console.error("--format=json requires --dry-run and cannot be combined with --diff");
-        process.exitCode = 2;
-        return;
-      }
-
-      const jsonPreview = opts.previewFormat === "json";
-      // Initialise the converter after choosing the mode. Its logger is
-      // configured on import; JSON stdout must contain only the report.
-      if (jsonPreview) process.env.LOG_LEVEL = "silent";
-      const { convert } = await import("./index");
-      if (!jsonPreview) console.log(chalk.cyan(`sel2pw — converting ${inputDir} -> ${opts.out}`));
-
-      // Build LLM fallback config when --llm-fallback is set.
-      let llmFallback: { provider: "anthropic" | "openai" | "gemini"; apiKey: string; model?: string } | undefined;
-      if (opts.llmFallback) {
-        const provider = opts.llmProvider ?? "anthropic";
-        const envKey =
-          provider === "anthropic" ? process.env.ANTHROPIC_API_KEY :
-          provider === "openai" ? process.env.OPENAI_API_KEY :
-          process.env.GOOGLE_API_KEY;
-        const apiKey = opts.llmKey ?? envKey;
-        if (!apiKey) {
+  .option(
+    "--llm-fallback",
+    "Run the configured LLM over files the AST pipeline couldn't classify.",
+  )
+  .option(
+    "--diff",
+    "Like --dry-run but prints unified diffs against an existing output dir.",
+  )
+  .action(
+    async (
+      inputDir: string,
+      opts: {
+        out: string;
+        templates?: string;
+        dryRun?: boolean;
+        emitSelfHealingShim?: boolean;
+        emitAuthSetup?: boolean;
+        format?: boolean;
+        previewFormat?: "markdown" | "json" | string;
+        validate?: boolean;
+        validateEslint?: boolean;
+        bddMode?: "preserve" | "flatten";
+        todoMarkers?: boolean;
+        pomStyle?: "instance" | "factory";
+        layout?: "v1-flat" | "v2-organized";
+        lang?: "java" | "csharp";
+        llmProvider?: "anthropic" | "openai" | "gemini";
+        llmKey?: string;
+        llmModel?: string;
+        llmFallback?: boolean;
+        diff?: boolean;
+      },
+    ) => {
+      try {
+        if (!["markdown", "json"].includes(opts.previewFormat ?? "markdown")) {
           console.error(
-            chalk.red(
-              `--llm-fallback requires an API key. Pass --llm-key or set ${provider === "anthropic" ? "ANTHROPIC_API_KEY" : provider === "openai" ? "OPENAI_API_KEY" : "GOOGLE_API_KEY"} in env.`,
+            `Invalid preview format: ${opts.previewFormat}. Choose markdown or json.`,
+          );
+          process.exitCode = 2;
+          return;
+        }
+        if (opts.previewFormat === "json" && (!opts.dryRun || opts.diff)) {
+          console.error(
+            "--format=json requires --dry-run and cannot be combined with --diff",
+          );
+          process.exitCode = 2;
+          return;
+        }
+
+        const jsonPreview = opts.previewFormat === "json";
+        // Initialise the converter after choosing the mode. Its logger is
+        // configured on import; JSON stdout must contain only the report.
+        if (jsonPreview) process.env.LOG_LEVEL = "silent";
+        const { convert } = await import("./index");
+        if (!jsonPreview)
+          console.log(chalk.cyan(`sel2pw — converting ${inputDir} -> ${opts.out}`));
+
+        // Build LLM fallback config when --llm-fallback is set.
+        let llmFallback:
+          | {
+              provider: "anthropic" | "openai" | "gemini";
+              apiKey: string;
+              model?: string;
+            }
+          | undefined;
+        if (opts.llmFallback) {
+          const provider = opts.llmProvider ?? "anthropic";
+          const envKey =
+            provider === "anthropic"
+              ? process.env.ANTHROPIC_API_KEY
+              : provider === "openai"
+                ? process.env.OPENAI_API_KEY
+                : process.env.GOOGLE_API_KEY;
+          const apiKey = opts.llmKey ?? envKey;
+          if (!apiKey) {
+            console.error(
+              chalk.red(
+                `--llm-fallback requires an API key. Pass --llm-key or set ${provider === "anthropic" ? "ANTHROPIC_API_KEY" : provider === "openai" ? "OPENAI_API_KEY" : "GOOGLE_API_KEY"} in env.`,
+              ),
+            );
+            process.exit(2);
+          }
+          llmFallback = { provider, apiKey, model: opts.llmModel };
+        }
+        const { summary, files, dryRunPreview, dryRunResult } = await convert({
+          inputDir,
+          outputDir: opts.out,
+          templatesDir: opts.templates ?? path.resolve(__dirname, "..", "templates"),
+          dryRun: opts.dryRun || opts.diff,
+          emitSelfHealingShim: opts.emitSelfHealingShim,
+          emitAuthSetup: opts.emitAuthSetup,
+          formatOutput: opts.format,
+          telemetryDb: jsonPreview ? false : undefined,
+          validateOutput: opts.validate,
+          validateEslint: opts.validateEslint,
+          bddMode: opts.bddMode,
+          emitTodoMarkers: opts.todoMarkers,
+          pomStyle: opts.pomStyle,
+          layout: opts.layout ?? "v2-organized",
+          forceStack:
+            opts.lang === "csharp"
+              ? "csharp-nunit"
+              : opts.lang === "java"
+                ? "java-testng"
+                : undefined,
+          llmFallback,
+        });
+
+        if (jsonPreview) {
+          console.log(JSON.stringify(dryRunResult, null, 2));
+          return;
+        }
+
+        if (opts.diff) {
+          const fs = require("fs-extra"); // eslint-disable-line @typescript-eslint/no-require-imports
+          for (const f of files) {
+            const target = path.join(opts.out, f.relPath);
+            let existing = "";
+            if (await fs.pathExists(target)) existing = await fs.readFile(target, "utf8");
+            if (existing === f.source) continue;
+            console.log(chalk.bold(`\n--- ${f.relPath} ---`));
+            console.log(simpleDiff(existing, f.source));
+          }
+        }
+        printSummary(summary);
+        if (opts.dryRun) {
+          // v2.0.4 — print the FILE_MAPPING preview so the user can see WHAT
+          // would land where without opening any file. Suppressed when --diff
+          // is set because --diff already printed per-file unified diffs and
+          // the mapping table would be noise.
+          if (dryRunPreview && !opts.diff) {
+            console.log("");
+            console.log(chalk.cyan("─── Preview: would emit ───"));
+            console.log(dryRunPreview);
+          }
+          console.log(
+            chalk.yellow("Dry run — no files written. Rerun without --dry-run to apply."),
+          );
+        } else {
+          console.log(
+            chalk.green(
+              `\nDone. See ${path.join(opts.out, "CONVERSION_REVIEW.md")} for items needing manual review.`,
             ),
           );
-          process.exit(2);
         }
-        llmFallback = { provider, apiKey, model: opts.llmModel };
+      } catch (err: any) {
+        console.error(chalk.red("Conversion failed:"), err.message);
+        if (process.env.DEBUG) console.error(err.stack);
+        process.exit(1);
       }
-      const { summary, files, dryRunPreview, dryRunResult } = await convert({
-        inputDir,
-        outputDir: opts.out,
-        templatesDir: opts.templates ?? path.resolve(__dirname, "..", "templates"),
-        dryRun: opts.dryRun || opts.diff,
-        emitSelfHealingShim: opts.emitSelfHealingShim,
-        emitAuthSetup: opts.emitAuthSetup,
-        formatOutput: opts.format,
-        telemetryDb: jsonPreview ? false : undefined,
-        validateOutput: opts.validate,
-        validateEslint: opts.validateEslint,
-        bddMode: opts.bddMode,
-        emitTodoMarkers: opts.todoMarkers,
-        pomStyle: opts.pomStyle,
-        layout: opts.layout ?? "v2-organized",
-        forceStack: opts.lang === "csharp" ? "csharp-nunit" : opts.lang === "java" ? "java-testng" : undefined,
-        llmFallback,
-      });
-
-      if (jsonPreview) {
-        console.log(JSON.stringify(dryRunResult, null, 2));
-        return;
-      }
-
-      if (opts.diff) {
-        const fs = require("fs-extra"); // eslint-disable-line @typescript-eslint/no-require-imports
-        for (const f of files) {
-          const target = path.join(opts.out, f.relPath);
-          let existing = "";
-          if (await fs.pathExists(target)) existing = await fs.readFile(target, "utf8");
-          if (existing === f.source) continue;
-          console.log(chalk.bold(`\n--- ${f.relPath} ---`));
-          console.log(simpleDiff(existing, f.source));
-        }
-      }
-      printSummary(summary);
-      if (opts.dryRun) {
-        // v2.0.4 — print the FILE_MAPPING preview so the user can see WHAT
-        // would land where without opening any file. Suppressed when --diff
-        // is set because --diff already printed per-file unified diffs and
-        // the mapping table would be noise.
-        if (dryRunPreview && !opts.diff) {
-          console.log("");
-          console.log(chalk.cyan("─── Preview: would emit ───"));
-          console.log(dryRunPreview);
-        }
-        console.log(chalk.yellow("Dry run — no files written. Rerun without --dry-run to apply."));
-      } else {
-        console.log(
-          chalk.green(
-            `\nDone. See ${path.join(opts.out, "CONVERSION_REVIEW.md")} for items needing manual review.`,
-          ),
-        );
-      }
-    } catch (err: any) {
-      console.error(chalk.red("Conversion failed:"), err.message);
-      if (process.env.DEBUG) console.error(err.stack);
-      process.exit(1);
-    }
-  });
+    },
+  );
 
 program
   .command("analyze")
@@ -201,7 +262,9 @@ program
               : f.kind === "base"
                 ? chalk.yellow
                 : chalk.gray;
-        console.log(`${colour(f.kind.padEnd(14))} ${f.className.padEnd(28)} ${f.relPath}`);
+        console.log(
+          `${colour(f.kind.padEnd(14))} ${f.className.padEnd(28)} ${f.relPath}`,
+        );
       }
     } catch (err: any) {
       console.error(chalk.red("Analyze failed:"), err.message);
@@ -225,8 +288,7 @@ function printSummary(s: {
   console.log(`  Review items           ${s.warnings.length}`);
   const manual = s.warnings.filter((w) => w.severity === "manual").length;
   const warn = s.warnings.filter((w) => w.severity === "warning").length;
-  if (manual)
-    console.log(chalk.red(`    manual:  ${manual} (must be hand-edited)`));
+  if (manual) console.log(chalk.red(`    manual:  ${manual} (must be hand-edited)`));
   if (warn) console.log(chalk.yellow(`    warning: ${warn} (please verify)`));
 }
 
@@ -243,19 +305,27 @@ program
     const store = createFailureStore(dbPath);
     const rows = store.listRecentFailures(parseInt(opts.limit, 10));
     if (rows.length === 0) {
-      console.log(chalk.yellow("No failures recorded — either telemetry is disabled or you've had a clean run."));
+      console.log(
+        chalk.yellow(
+          "No failures recorded — either telemetry is disabled or you've had a clean run.",
+        ),
+      );
       console.log(`Looked at: ${dbPath}`);
       return;
     }
     console.log(chalk.bold(`Recent failures (${rows.length}, newest first):`));
     for (const r of rows) {
       const colour =
-        r.failureKind === "parse-error" ? chalk.red :
-        r.failureKind === "manual-review" ? chalk.yellow :
-        chalk.gray;
+        r.failureKind === "parse-error"
+          ? chalk.red
+          : r.failureKind === "manual-review"
+            ? chalk.yellow
+            : chalk.gray;
       console.log("");
       console.log(`${colour(r.failureKind.padEnd(24))} ${r.sourceFile}`);
-      console.log(`  pattern: ${r.patternSignature}   kind: ${r.fileKind}   when: ${r.createdAt}`);
+      console.log(
+        `  pattern: ${r.patternSignature}   kind: ${r.fileKind}   when: ${r.createdAt}`,
+      );
       if (r.errorMessage) console.log(`  msg:     ${r.errorMessage.slice(0, 200)}`);
     }
     store.close();
@@ -279,9 +349,12 @@ program
     console.log(chalk.bold(`Top failure patterns:`));
     for (const p of patterns) {
       console.log("");
-      console.log(`${chalk.cyan(p.count.toString().padStart(5))}× ${p.signature}   (${p.sample.failureKind})`);
+      console.log(
+        `${chalk.cyan(p.count.toString().padStart(5))}× ${p.signature}   (${p.sample.failureKind})`,
+      );
       console.log(`       ${p.sample.sourceFile}`);
-      if (p.sample.errorMessage) console.log(`       ${p.sample.errorMessage.slice(0, 180)}`);
+      if (p.sample.errorMessage)
+        console.log(`       ${p.sample.errorMessage.slice(0, 180)}`);
     }
     store.close();
   });
@@ -290,11 +363,17 @@ program
   .command("telemetry-share")
   .description("Opt-in: upload aggregate (no source) telemetry to a central endpoint.")
   .option("--db <path>", "Override telemetry DB path.")
-  .option("--endpoint <url>", "Upload URL.", process.env.SEL2PW_TELEMETRY_UPLOAD_URL ?? "")
+  .option(
+    "--endpoint <url>",
+    "Upload URL.",
+    process.env.SEL2PW_TELEMETRY_UPLOAD_URL ?? "",
+  )
   .option("--api-key <key>", "Optional bearer token.")
   .action(async (opts: { db?: string; endpoint: string; apiKey?: string }) => {
     if (!opts.endpoint) {
-      console.error(chalk.red("--endpoint <url> is required (or set SEL2PW_TELEMETRY_UPLOAD_URL)."));
+      console.error(
+        chalk.red("--endpoint <url> is required (or set SEL2PW_TELEMETRY_UPLOAD_URL)."),
+      );
       process.exit(2);
     }
     const { uploadAggregateTelemetry } = await import("./post/telemetryUpload");
@@ -362,8 +441,6 @@ function simpleDiff(before: string, after: string): string {
 // Keep the original boolean --format flag unambiguous in every argument
 // position. Map only explicit --format=<mode> aliases to the preview option.
 const cliArgs = process.argv.map((arg) =>
-  arg.startsWith("--format=")
-    ? `--preview-format=${arg.slice("--format=".length)}`
-    : arg,
+  arg.startsWith("--format=") ? `--preview-format=${arg.slice("--format=".length)}` : arg,
 );
 program.parseAsync(cliArgs);

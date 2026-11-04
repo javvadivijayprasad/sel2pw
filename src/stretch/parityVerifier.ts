@@ -127,7 +127,11 @@ async function runPlaywright(dir: string, baseUrl: string): Promise<SuiteResult>
     const res = await execFileP(
       "npx",
       ["--no-install", "playwright", "test", "--reporter=json"],
-      { cwd: dir, env: { ...process.env, BASE_URL: baseUrl }, maxBuffer: 50 * 1024 * 1024 },
+      {
+        cwd: dir,
+        env: { ...process.env, BASE_URL: baseUrl },
+        maxBuffer: 50 * 1024 * 1024,
+      },
     );
     stdout = res.stdout;
   } catch (err: any) {
@@ -148,7 +152,8 @@ async function runPlaywright(dir: string, baseUrl: string): Promise<SuiteResult>
             const id = `${spec.title}::${t.projectName ?? "default"}`;
             const last = t.results?.[t.results.length - 1];
             if (last?.status === "passed") passed.push(id);
-            else if (last) failed.push({ test: id, error: last.error?.message ?? "failed" });
+            else if (last)
+              failed.push({ test: id, error: last.error?.message ?? "failed" });
           }
         }
       }
@@ -168,11 +173,15 @@ function renderMarkdown(r: ParityReport): string {
       `${r.divergences.matchedCount} tests matched (passed/failed identically).`,
   );
   lines.push("");
-  lines.push(`## Regressions (Selenium ✓ → Playwright ✗) — ${r.divergences.regressions.length}`);
+  lines.push(
+    `## Regressions (Selenium ✓ → Playwright ✗) — ${r.divergences.regressions.length}`,
+  );
   lines.push("");
   for (const t of r.divergences.regressions) lines.push(`- ${t}`);
   lines.push("");
-  lines.push(`## Likely fixes (Selenium ✗ → Playwright ✓) — ${r.divergences.fixes.length}`);
+  lines.push(
+    `## Likely fixes (Selenium ✗ → Playwright ✓) — ${r.divergences.fixes.length}`,
+  );
   lines.push("");
   for (const t of r.divergences.fixes) lines.push(`- ${t}`);
   lines.push("");
@@ -180,8 +189,12 @@ function renderMarkdown(r: ParityReport): string {
   lines.push("");
   lines.push(`| Suite | Passed | Failed | Duration |`);
   lines.push(`| --- | --- | --- | --- |`);
-  lines.push(`| Selenium | ${r.selenium.passed.length} | ${r.selenium.failed.length} | ${(r.selenium.durationMs / 1000).toFixed(1)}s |`);
-  lines.push(`| Playwright | ${r.playwright.passed.length} | ${r.playwright.failed.length} | ${(r.playwright.durationMs / 1000).toFixed(1)}s |`);
+  lines.push(
+    `| Selenium | ${r.selenium.passed.length} | ${r.selenium.failed.length} | ${(r.selenium.durationMs / 1000).toFixed(1)}s |`,
+  );
+  lines.push(
+    `| Playwright | ${r.playwright.passed.length} | ${r.playwright.failed.length} | ${(r.playwright.durationMs / 1000).toFixed(1)}s |`,
+  );
   lines.push("");
   return lines.join("\n");
 }

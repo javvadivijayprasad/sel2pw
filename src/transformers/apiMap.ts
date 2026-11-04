@@ -250,7 +250,10 @@ export const API_REWRITES: ApiRewrite[] = [
   // avoids accidentally rewriting unrelated assignments.
   // We run this BEFORE the constructor-args rewrite below so the args end up
   // already cleaned (driver, wait → page).
-  { pattern: /\b([A-Z]\w*)\s+(\w+)\s*=\s*new\s+\1\s*\(/g, replacement: "const $2 = new $1(" },
+  {
+    pattern: /\b([A-Z]\w*)\s+(\w+)\s*=\s*new\s+\1\s*\(/g,
+    replacement: "const $2 = new $1(",
+  },
   // Page Object constructors: new XxxPage(driver, wait) → new XxxPage(page).
   // Selenium-style POMs take (driver) or (driver, wait); Playwright POMs take
   // (page). Inside an `async ({ page }) => { ... }` test body, `page` is the
@@ -266,7 +269,8 @@ export const API_REWRITES: ApiRewrite[] = [
   // Match the type prefix conservatively (uppercase first char + balanced angle brackets
   // up to one level of nesting) and drop it. The TS side is happy with `const x = …`.
   {
-    pattern: /\b(?:List|ArrayList|LinkedList|Set|HashSet|Map|HashMap|LinkedHashMap|Collection|Iterable|Optional)\s*<[^<>]*(?:<[^<>]*>[^<>]*)?>\s+(\w+)\s*=/g,
+    pattern:
+      /\b(?:List|ArrayList|LinkedList|Set|HashSet|Map|HashMap|LinkedHashMap|Collection|Iterable|Optional)\s*<[^<>]*(?:<[^<>]*>[^<>]*)?>\s+(\w+)\s*=/g,
     replacement: "const $1 =",
   },
   // Numeric literals with Java type suffixes — drop the suffix.

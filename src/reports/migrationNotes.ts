@@ -40,15 +40,21 @@ export async function writeMigrationNotes(
 
   lines.push(`## What you can delete from your old project`);
   lines.push("");
-  lines.push(`Once the converted suite is green, the following Maven dependencies are no longer needed:`);
+  lines.push(
+    `Once the converted suite is green, the following Maven dependencies are no longer needed:`,
+  );
   lines.push("");
   lines.push(`- \`org.seleniumhq.selenium:selenium-java\``);
   lines.push(`- \`org.testng:testng\``);
   lines.push(`- \`io.cucumber:cucumber-java\` (if you used Cucumber)`);
   lines.push(`- \`org.hamcrest:hamcrest\` (assertions handled by \`expect()\`)`);
-  lines.push(`- \`io.github.bonigarcia:webdrivermanager\` (Playwright manages browsers itself)`);
+  lines.push(
+    `- \`io.github.bonigarcia:webdrivermanager\` (Playwright manages browsers itself)`,
+  );
   lines.push("");
-  lines.push(`The old \`pom.xml\` and \`testng.xml\` can be archived once you verify the Playwright suite covers the same behaviour.`);
+  lines.push(
+    `The old \`pom.xml\` and \`testng.xml\` can be archived once you verify the Playwright suite covers the same behaviour.`,
+  );
   lines.push("");
 
   lines.push(`## What changed in your test runtime`);
@@ -113,7 +119,9 @@ export async function writeMigrationNotes(
 
   lines.push(`## See also`);
   lines.push("");
-  lines.push(`- [\`CONVERSION_REVIEW.md\`](./CONVERSION_REVIEW.md) — line-level review punch list.`);
+  lines.push(
+    `- [\`CONVERSION_REVIEW.md\`](./CONVERSION_REVIEW.md) — line-level review punch list.`,
+  );
   lines.push(`- [\`README.md\`](./README.md) — how to run and configure the project.`);
   lines.push(`- Playwright docs: <https://playwright.dev/docs/intro>`);
   lines.push("");

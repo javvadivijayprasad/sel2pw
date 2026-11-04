@@ -36,7 +36,9 @@ export async function tscValidate(outputDir: string): Promise<{
     const stderr = err.stderr?.toString() ?? "";
     const out = stdout + stderr;
     if (
-      /'npx' is not recognised|not found|ENOENT|Cannot find module|cannot find/i.test(out) ||
+      /'npx' is not recognised|not found|ENOENT|Cannot find module|cannot find/i.test(
+        out,
+      ) ||
       out.trim().length === 0
     ) {
       // Empty-output non-zero exit (Windows "tsc not installed in output project"

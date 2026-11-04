@@ -77,7 +77,8 @@ export async function llmRewriteMethodBody(
         warning: {
           file: "(unknown)",
           severity: "warning",
-          message: "Hybrid LLM returned an unusable result; falling back to leaving the source for manual review.",
+          message:
+            "Hybrid LLM returned an unusable result; falling back to leaving the source for manual review.",
         },
       };
     }
@@ -100,6 +101,8 @@ function looksLikeValidTs(ts: string): boolean {
   if (/import\s+.*from\s+['"]selenium-webdriver['"]/.test(ts)) return false;
   if (/^\s*$/.test(ts)) return false;
   // Balanced braces — quick sanity.
-  const depth = ts.split("").reduce((d, c) => d + (c === "{" ? 1 : c === "}" ? -1 : 0), 0);
+  const depth = ts
+    .split("")
+    .reduce((d, c) => d + (c === "{" ? 1 : c === "}" ? -1 : 0), 0);
   return depth === 0;
 }

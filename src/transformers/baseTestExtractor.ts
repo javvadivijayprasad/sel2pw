@@ -56,20 +56,11 @@ export function emitFixture(
   const lines: string[] = [];
   lines.push(`import { test as base, expect } from '@playwright/test';`);
   lines.push("");
-  lines.push(
-    `/**`,
-  );
-  lines.push(
-    ` * Auto-generated from ${path.basename(baseTestFile.path)} by sel2pw.`,
-  );
-  lines.push(
-    ` * Replaces the legacy BaseTest superclass pattern with a Playwright`,
-  );
-  lines.push(
-    ` * fixture extension. Tests should \`import { test } from '../fixtures'\``,
-  );
-  lines.push(` * instead of \`from '@playwright/test'\` to inherit shared setup.`,
-  );
+  lines.push(`/**`);
+  lines.push(` * Auto-generated from ${path.basename(baseTestFile.path)} by sel2pw.`);
+  lines.push(` * Replaces the legacy BaseTest superclass pattern with a Playwright`);
+  lines.push(` * fixture extension. Tests should \`import { test } from '../fixtures'\``);
+  lines.push(` * instead of \`from '@playwright/test'\` to inherit shared setup.`);
   lines.push(` */`);
   lines.push(`export const test = base.extend<{}>({`);
   lines.push(`  page: async ({ page }, use) => {`);
@@ -149,7 +140,12 @@ function stripDriverBoilerplate(body: string): string {
       const t = line.trim();
 
       // Driver instantiation
-      if (/^driver\s*=\s*new\s+(Chrome|Firefox|Edge|Safari|Remote|InternetExplorer)Driver/.test(t)) return false;
+      if (
+        /^driver\s*=\s*new\s+(Chrome|Firefox|Edge|Safari|Remote|InternetExplorer)Driver/.test(
+          t,
+        )
+      )
+        return false;
       if (/^WebDriver\s+driver\s*=/.test(t)) return false;
       if (/^driver\s*=\s*new\s+\w+Driver\s*\(/.test(t)) return false;
 
@@ -173,16 +169,19 @@ function stripDriverBoilerplate(body: string): string {
       // / `let wait = ...` / `var wait = ...` declarations (post-Java→TS
       // const-conversion form).
       if (/^WebDriverWait\s+\w+\s*=/.test(t)) return false;
-      if (/^(?:const|let|var|final)\s+\w+\s*=\s*new\s+WebDriverWait\s*\(/.test(t)) return false;
+      if (/^(?:const|let|var|final)\s+\w+\s*=\s*new\s+WebDriverWait\s*\(/.test(t))
+        return false;
       if (/^\w+\s*=\s*new\s+WebDriverWait\s*\(/.test(t)) return false;
       if (/^FluentWait\s+\w+\s*=/.test(t)) return false;
-      if (/^(?:const|let|var|final)\s+\w+\s*=\s*new\s+FluentWait\s*\(/.test(t)) return false;
+      if (/^(?:const|let|var|final)\s+\w+\s*=\s*new\s+FluentWait\s*\(/.test(t))
+        return false;
       if (/^\w+\s*=\s*new\s+FluentWait\s*\(/.test(t)) return false;
 
       // Browser options / capabilities setup (Selenium-only — Playwright
       // configures these in playwright.config.ts → projects → use)
       if (/^(?:Chrome|Firefox|Edge|Safari)Options\s+\w+\s*=/.test(t)) return false;
-      if (/^\w+\s*=\s*new\s+(?:Chrome|Firefox|Edge|Safari)Options\b/.test(t)) return false;
+      if (/^\w+\s*=\s*new\s+(?:Chrome|Firefox|Edge|Safari)Options\b/.test(t))
+        return false;
       if (/^DesiredCapabilities\s+\w+\s*=/.test(t)) return false;
       if (/^\w+\.addArguments?\s*\(/.test(t)) return false;
       if (/^\w+\.setCapability\s*\(/.test(t)) return false;
@@ -206,8 +205,14 @@ function stripDriverBoilerplate(body: string): string {
       if (/^DriverManager\.(?:setDriver|getDriver|quit|remove)/.test(t)) return false;
       if (/^DriverManager\s*\./.test(t)) return false;
       if (/^new\s+(?:Target|Browser|WebDriver|Driver)Factory\s*\(/.test(t)) return false;
-      if (/^\w+\s*=\s*new\s+(?:Target|Browser|WebDriver|Driver)Factory\s*\(/.test(t)) return false;
-      if (/^(?:const|let|var)\s+\w+\s*=\s*new\s+(?:Target|Browser|WebDriver|Driver)Factory\s*\(/.test(t)) return false;
+      if (/^\w+\s*=\s*new\s+(?:Target|Browser|WebDriver|Driver)Factory\s*\(/.test(t))
+        return false;
+      if (
+        /^(?:const|let|var)\s+\w+\s*=\s*new\s+(?:Target|Browser|WebDriver|Driver)Factory\s*\(/.test(
+          t,
+        )
+      )
+        return false;
       if (/^AllureManager\s*\./.test(t)) return false;
       if (/^Allure\w*Listener\s*\./.test(t)) return false;
       if (/^Allure\w*Reporter\s*\./.test(t)) return false;
@@ -246,8 +251,7 @@ function extractLifecycleHooks(source: string): ExtractedHook[] {
   const re = /@(Before|After)(Suite|Class|Method|Test)\b[^{]*?\{/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(source)) !== null) {
-    const kind: "before" | "after" =
-      m[1].toLowerCase() === "before" ? "before" : "after";
+    const kind: "before" | "after" = m[1].toLowerCase() === "before" ? "before" : "after";
     const bodyStart = m.index + m[0].length - 1;
     const body = readBracedBody(source, bodyStart);
     if (body) out.push({ kind, body });

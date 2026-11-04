@@ -78,9 +78,7 @@ export interface AnthropicPatchOptions {
   maxTokens?: number;
 }
 
-export function makeAnthropicPatchCallback(
-  opts: AnthropicPatchOptions = {},
-): PatchFn {
+export function makeAnthropicPatchCallback(opts: AnthropicPatchOptions = {}): PatchFn {
   return async ({ failure, generatedTs, originalJava }) => {
     const client = loadClient();
     if (!client) return null;
@@ -114,9 +112,7 @@ export function makeAnthropicPatchCallback(
 
 // ---------------- hybrid LLM callback ----------------
 
-export function makeAnthropicLlmCallback(
-  opts: AnthropicPatchOptions = {},
-): LlmCallback {
+export function makeAnthropicLlmCallback(opts: AnthropicPatchOptions = {}): LlmCallback {
   return async ({ javaSource, contextFiles, sanitisedSource }) => {
     const client = loadClient();
     if (!client) return null;
@@ -210,7 +206,7 @@ function buildPatchSystemPrompt(): string {
     "  - the converted TS source files",
     "  - the original Java sources (sanitised by ai-governance)",
     "Output ONLY a JSON object with this exact shape:",
-    "  { \"patches\": { \"<relative-path>\": \"<full-new-file-content>\", ... } }",
+    '  { "patches": { "<relative-path>": "<full-new-file-content>", ... } }',
     "Do not include explanatory prose. Do not wrap in code fences.",
     "Patch the smallest set of files necessary; usually a single page object or a single test file.",
     "Common fix patterns:",

@@ -71,7 +71,9 @@ export interface FailureStore {
   recordFailure(record: FailureRecord): void;
   finishJob(jobId: string, status: "succeeded" | "failed"): void;
   listRecentFailures(limit?: number): FailureRecord[];
-  listFailurePatterns(limit?: number): { signature: string; count: number; sample: FailureRecord }[];
+  listFailurePatterns(
+    limit?: number,
+  ): { signature: string; count: number; sample: FailureRecord }[];
   getStats(): {
     totalJobs: number;
     totalFailures: number;
@@ -142,13 +144,12 @@ export function createFailureStore(dbPath: string): FailureStore {
 
 // ---------------- SQLite-backed store ----------------
 
-function makeSqliteStore(
-  sqlite: BetterSqlite3Module,
-  dbPath: string,
-): FailureStore {
+function makeSqliteStore(sqlite: BetterSqlite3Module, dbPath: string): FailureStore {
   // Parameter shape: better-sqlite3's default export is the constructor.
   // Some versions ship as { default: ... }, some as the function directly.
-  const Ctor = (sqlite as unknown as { default?: typeof sqlite.default }).default ?? (sqlite as unknown as new (p: string) => BetterSqlite3Database);
+  const Ctor =
+    (sqlite as unknown as { default?: typeof sqlite.default }).default ??
+    (sqlite as unknown as new (p: string) => BetterSqlite3Database);
   const db = new Ctor(dbPath);
 
   db.exec(`
@@ -245,7 +246,9 @@ function makeSqliteStore(
   `);
   const totalJobsStmt = db.prepare(`SELECT COUNT(*) AS c FROM conversion_jobs`);
   const totalFailuresStmt = db.prepare(`SELECT COUNT(*) AS c FROM conversion_failures`);
-  const totalSucceededStmt = db.prepare(`SELECT SUM(filesSucceeded) AS s, SUM(filesScanned) AS t FROM conversion_jobs`);
+  const totalSucceededStmt = db.prepare(
+    `SELECT SUM(filesSucceeded) AS s, SUM(filesScanned) AS t FROM conversion_jobs`,
+  );
 
   return {
     recordJob(record) {
@@ -297,9 +300,10 @@ function makeSqliteStore(
         ),
       );
       const byFileKind = Object.fromEntries(
-        (statsByFileKindStmt.all() as { fileKind: string; count: number }[]).map(
-          (r) => [r.fileKind, r.count],
-        ),
+        (statsByFileKindStmt.all() as { fileKind: string; count: number }[]).map((r) => [
+          r.fileKind,
+          r.count,
+        ]),
       );
       const totalJobs = (totalJobsStmt.get() as { c: number }).c;
       const totalFailures = (totalFailuresStmt.get() as { c: number }).c;

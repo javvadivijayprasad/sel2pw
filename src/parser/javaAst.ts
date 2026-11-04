@@ -301,9 +301,10 @@ function extractUnknownFieldsFromCst(root: CstNode, known: LocatorField[]): stri
   const out: string[] = [];
   for (const fd of findAll(root, "fieldDeclaration")) {
     const text = nodeText(fd);
-    const m = /^\s*(?:private|protected|public)\s+(?:static\s+)?(?:final\s+)?(\w[\w<>,\s]*?)\s+(\w+)/.exec(
-      text,
-    );
+    const m =
+      /^\s*(?:private|protected|public)\s+(?:static\s+)?(?:final\s+)?(\w[\w<>,\s]*?)\s+(\w+)/.exec(
+        text,
+      );
     if (!m) continue;
     const type = m[1].trim();
     const name = m[2];
@@ -405,7 +406,11 @@ function parseSignatureFromNode(md: CstNode): ParsedSignature | null {
         const parts = p.trim().split(/\s+/);
         return {
           name: parts[parts.length - 1],
-          javaType: parts.slice(0, -1).join(" ").replace(/^final\s+/, "") || "Object",
+          javaType:
+            parts
+              .slice(0, -1)
+              .join(" ")
+              .replace(/^final\s+/, "") || "Object",
         };
       })
     : [];

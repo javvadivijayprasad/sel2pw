@@ -40,7 +40,9 @@ export function hasSeleniumApi(source: string): boolean {
     /\bnew\s+Actions\s*\(/.test(source) ||
     /\bWebElement\b/.test(source) ||
     /@FindBy\b/.test(source) ||
-    /\bdriver\.(get|navigate|switchTo|getTitle|getCurrentUrl|getPageSource|manage|getWindowHandles)/.test(source)
+    /\bdriver\.(get|navigate|switchTo|getTitle|getCurrentUrl|getPageSource|manage|getWindowHandles)/.test(
+      source,
+    )
   );
 }
 
@@ -68,9 +70,7 @@ export function emitConvertibleHelper(file: JavaFile): {
   lines.push(`import { Locator, Page, expect } from '@playwright/test';`);
   lines.push("");
   lines.push(`/**`);
-  lines.push(
-    ` * Converted helper class from your Selenium suite (${file.className}).`,
-  );
+  lines.push(` * Converted helper class from your Selenium suite (${file.className}).`);
   lines.push(
     ` * Method bodies have been auto-translated through sel2pw's body transformer:`,
   );
@@ -105,10 +105,16 @@ export function emitConvertibleHelper(file: JavaFile): {
     if (keysParams.length > 0) {
       for (const kp of keysParams) {
         // <el>.sendKeys(<keysParam>) → <el>.press(<keysParam>)
-        const pressRe = new RegExp(`(\\w+)\\.sendKeys\\s*\\(\\s*${escapeRegex(kp)}\\s*\\)`, "g");
+        const pressRe = new RegExp(
+          `(\\w+)\\.sendKeys\\s*\\(\\s*${escapeRegex(kp)}\\s*\\)`,
+          "g",
+        );
         body = body.replace(pressRe, `$1.press(${kp})`);
         // <keysParam>.name() → <keysParam> (the param is now a plain string)
-        body = body.replace(new RegExp(`\\b${escapeRegex(kp)}\\.name\\s*\\(\\s*\\)`, "g"), kp);
+        body = body.replace(
+          new RegExp(`\\b${escapeRegex(kp)}\\.name\\s*\\(\\s*\\)`, "g"),
+          kp,
+        );
       }
     }
 
@@ -119,7 +125,9 @@ export function emitConvertibleHelper(file: JavaFile): {
     const asyncKeyword = m.isAsync ? "async " : "";
     const staticKeyword = m.isStatic ? "static " : "";
     lines.push("");
-    lines.push(`  ${staticKeyword}${asyncKeyword}${m.name}(${tsParams})${tsReturn ? ": " + tsReturn : ""} {`);
+    lines.push(
+      `  ${staticKeyword}${asyncKeyword}${m.name}(${tsParams})${tsReturn ? ": " + tsReturn : ""} {`,
+    );
     lines.push(dedentAndIndent(transformed.body, "    "));
     lines.push(`  }`);
   }
@@ -193,9 +201,11 @@ function rewriteSeleniumParams(paramSig: string): string {
       let tsType = type;
       if (/^WebDriver$/.test(type)) tsType = "Page";
       else if (/^WebElement$/.test(type)) tsType = "Locator";
-      else if (/^By$/.test(type)) tsType = "string"; // selectors come in as strings
+      else if (/^By$/.test(type))
+        tsType = "string"; // selectors come in as strings
       else if (/^List<\s*WebElement\s*>$/.test(type)) tsType = "Locator";
-      else if (/^Keys$/.test(type)) tsType = "string"; // v0.11.1 Patch G — Selenium Keys enum becomes a string key name
+      else if (/^Keys$/.test(type))
+        tsType = "string"; // v0.11.1 Patch G — Selenium Keys enum becomes a string key name
       else tsType = javaTypeToTs(type);
       return `${name}: ${tsType}`;
     })

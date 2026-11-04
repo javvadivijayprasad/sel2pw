@@ -129,13 +129,10 @@ function rewriteDriverWrappers(
       return `await this.page.goto(${url});`;
     },
   );
-  out = out.replace(
-    /\bBrowserManager\.getBrowser\s*\(\s*\)\.getTitle\s*\(\s*\)/g,
-    () => {
-      touched = true;
-      return "await this.page.title()";
-    },
-  );
+  out = out.replace(/\bBrowserManager\.getBrowser\s*\(\s*\)\.getTitle\s*\(\s*\)/g, () => {
+    touched = true;
+    return "await this.page.title()";
+  });
   out = out.replace(/\bBrowserManager\.getBrowser\s*\(\s*\)/g, () => {
     touched = true;
     return "this.page";
@@ -220,11 +217,7 @@ function rewriteWindowHandles(
 
 // -------- Actions chains --------
 
-function rewriteActions(
-  body: string,
-  filePath: string,
-  warnings: ReviewItem[],
-): string {
+function rewriteActions(body: string, filePath: string, warnings: ReviewItem[]): string {
   // Common patterns:
   //   new Actions(driver).moveToElement(el).perform();
   //   new Actions(driver).moveToElement(el).click().perform();
@@ -235,7 +228,8 @@ function rewriteActions(
   // moveToElement(x).click().perform()
   out = out.replace(
     /new\s+Actions\s*\(\s*driver\s*\)\.moveToElement\s*\(\s*([^)]+?)\s*\)\.click\s*\(\s*\)\.perform\s*\(\s*\)\s*;/g,
-    (_m, el) => `await ${normaliseLocatorRef(el)}.hover();\nawait ${normaliseLocatorRef(el)}.click();`,
+    (_m, el) =>
+      `await ${normaliseLocatorRef(el)}.hover();\nawait ${normaliseLocatorRef(el)}.click();`,
   );
 
   // moveToElement(x).perform()  -> hover()
@@ -272,8 +266,7 @@ function rewriteActions(
   // catch the difference in code review and swap to .pressSequentially().
   out = out.replace(
     /new\s+Actions\s*\(\s*[\w.()]+\s*\)\.sendKeys\s*\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)(?:\.perform\s*\(\s*\)\s*)?;/g,
-    (_m, el, value) =>
-      `await ${normaliseLocatorRef(el)}.fill(${value});`,
+    (_m, el, value) => `await ${normaliseLocatorRef(el)}.fill(${value});`,
   );
 
   // sendKeys(value) on a chain that already targets an element (rare; user-built
@@ -391,11 +384,7 @@ function parseFrameArg(arg: string): string {
 
 // -------- Alert handling --------
 
-function rewriteAlerts(
-  body: string,
-  filePath: string,
-  warnings: ReviewItem[],
-): string {
+function rewriteAlerts(body: string, filePath: string, warnings: ReviewItem[]): string {
   // driver.switchTo().alert().accept();   -> page.on('dialog', d => d.accept());
   //                                          (declared once at the top of the test)
   // driver.switchTo().alert().dismiss();
@@ -404,20 +393,14 @@ function rewriteAlerts(
   let out = body;
   let needsHelper = false;
 
-  out = out.replace(
-    /driver\.switchTo\(\)\.alert\(\)\.accept\(\)\s*;/g,
-    () => {
-      needsHelper = true;
-      return `this.page.once('dialog', (d) => d.accept());`;
-    },
-  );
-  out = out.replace(
-    /driver\.switchTo\(\)\.alert\(\)\.dismiss\(\)\s*;/g,
-    () => {
-      needsHelper = true;
-      return `this.page.once('dialog', (d) => d.dismiss());`;
-    },
-  );
+  out = out.replace(/driver\.switchTo\(\)\.alert\(\)\.accept\(\)\s*;/g, () => {
+    needsHelper = true;
+    return `this.page.once('dialog', (d) => d.accept());`;
+  });
+  out = out.replace(/driver\.switchTo\(\)\.alert\(\)\.dismiss\(\)\s*;/g, () => {
+    needsHelper = true;
+    return `this.page.once('dialog', (d) => d.dismiss());`;
+  });
   out = out.replace(
     /driver\.switchTo\(\)\.alert\(\)\.sendKeys\s*\(\s*([^)]+)\s*\)\s*;/g,
     (_m, text) => {

@@ -14,10 +14,7 @@ import fg from "fast-glob";
  * MVP target stack and the most common shape in the wild.
  */
 export type SourceStack =
-  | "java-testng"
-  | "java-bdd-cucumber"
-  | "csharp-nunit"
-  | "csharp-bdd-specflow";
+  "java-testng" | "java-bdd-cucumber" | "csharp-nunit" | "csharp-bdd-specflow";
 
 export interface StackDetection {
   stack: SourceStack;
@@ -38,7 +35,14 @@ export interface StackDetection {
  */
 export async function detectSourceStack(inputDir: string): Promise<StackDetection> {
   const abs = path.resolve(inputDir);
-  const ignore = ["**/target/**", "**/build/**", "**/bin/**", "**/obj/**", "**/.idea/**", "**/node_modules/**"];
+  const ignore = [
+    "**/target/**",
+    "**/build/**",
+    "**/bin/**",
+    "**/obj/**",
+    "**/.idea/**",
+    "**/node_modules/**",
+  ];
 
   const javaFiles = (await fg(["**/*.java"], { cwd: abs, ignore })).length;
   const csharpFiles = (await fg(["**/*.cs"], { cwd: abs, ignore })).length;

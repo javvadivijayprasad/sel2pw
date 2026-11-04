@@ -48,11 +48,17 @@ export function renderFileMapping(args: BuildResultArgs): string {
   // `converted`) so the headline matches what the user actually sees
   // in the sections below — not the raw JSON stats.
   lines.push(
-    "**" + result.stats.filesScanned + " files scanned** — " +
-      (groups.converted.length + groups.aggregated.length) + " converted, " +
-      groups.stubbed.length + " stubbed, " +
-      groups.skipped.length + " skipped, " +
-      groups.failed.length + " failed.",
+    "**" +
+      result.stats.filesScanned +
+      " files scanned** — " +
+      (groups.converted.length + groups.aggregated.length) +
+      " converted, " +
+      groups.stubbed.length +
+      " stubbed, " +
+      groups.skipped.length +
+      " skipped, " +
+      groups.failed.length +
+      " failed.",
   );
   lines.push("");
 
@@ -65,8 +71,7 @@ export function renderFileMapping(args: BuildResultArgs): string {
     {
       key: "converted",
       title: "Converted",
-      blurb:
-        "Java source had a 1:1 Playwright translation. Output file compiles as-is.",
+      blurb: "Java source had a 1:1 Playwright translation. Output file compiles as-is.",
     },
     {
       key: "aggregated",

@@ -17,9 +17,7 @@ describe("applyAssertionRewrites", () => {
 
   it("3-arg assertEquals with message attaches it to expect", () => {
     expect(
-      applyAssertionRewrites(
-        'Assert.assertEquals(actual, expected, "should match");',
-      ),
+      applyAssertionRewrites('Assert.assertEquals(actual, expected, "should match");'),
     ).toBe('expect(actual, "should match").toBe(expected);');
   });
 
@@ -30,24 +28,22 @@ describe("applyAssertionRewrites", () => {
   });
 
   it("assertTrue with parens-in-arg (function call)", () => {
-    expect(
-      applyAssertionRewrites("Assert.assertTrue(homePage.isLogoutVisible());"),
-    ).toBe("expect(homePage.isLogoutVisible()).toBe(true);");
+    expect(applyAssertionRewrites("Assert.assertTrue(homePage.isLogoutVisible());")).toBe(
+      "expect(homePage.isLogoutVisible()).toBe(true);",
+    );
   });
 
   it("assertTrue with message", () => {
-    expect(
-      applyAssertionRewrites('Assert.assertTrue(ok, "should be ok");'),
-    ).toBe('expect(ok, "should be ok").toBe(true);');
+    expect(applyAssertionRewrites('Assert.assertTrue(ok, "should be ok");')).toBe(
+      'expect(ok, "should be ok").toBe(true);',
+    );
   });
 
   it("assertFalse / assertNull / assertNotNull", () => {
     expect(applyAssertionRewrites("Assert.assertFalse(broken);")).toBe(
       "expect(broken).toBe(false);",
     );
-    expect(applyAssertionRewrites("Assert.assertNull(x);")).toBe(
-      "expect(x).toBeNull();",
-    );
+    expect(applyAssertionRewrites("Assert.assertNull(x);")).toBe("expect(x).toBeNull();");
     expect(applyAssertionRewrites("Assert.assertNotNull(y);")).toBe(
       "expect(y).not.toBeNull();",
     );
@@ -84,8 +80,8 @@ describe("applyAssertionRewrites", () => {
   });
 
   it("leaves an assert without trailing ; alone (defensive)", () => {
-    expect(
-      applyAssertionRewrites("Assert.assertEquals(a, b)\nsomethingElse"),
-    ).toContain("Assert.assertEquals");
+    expect(applyAssertionRewrites("Assert.assertEquals(a, b)\nsomethingElse")).toContain(
+      "Assert.assertEquals",
+    );
   });
 });

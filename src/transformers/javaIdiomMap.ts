@@ -33,10 +33,7 @@ export interface IdiomMapResult {
   warnings: ReviewItem[];
 }
 
-export function applyJavaIdiomRewrites(
-  raw: string,
-  filePath: string,
-): IdiomMapResult {
+export function applyJavaIdiomRewrites(raw: string, filePath: string): IdiomMapResult {
   const warnings: ReviewItem[] = [];
   let body = raw;
 
@@ -57,10 +54,7 @@ export function applyJavaIdiomRewrites(
   // Strip `@throws Exception` / `@param` Javadoc tags inside method bodies
   // (they're harmless but TS doesn't expect them at file-body scope when
   // they leak from JSDoc into adjacent statements).
-  body = body.replace(
-    /^[\t ]*\*\s*@(throws|param|return)\s+[^\n]*$/gm,
-    "",
-  );
+  body = body.replace(/^[\t ]*\*\s*@(throws|param|return)\s+[^\n]*$/gm, "");
 
   // ============================================================
   // -4) Java-typed local declarations → const (v0.11.3 Patch EE)
@@ -83,7 +77,8 @@ export function applyJavaIdiomRewrites(
   // class name (uppercase first char, no spaces in it).
   body = body.replace(
     /^([\t ]*)(?:final\s+)?([A-Z]\w+)(?:<[^>]*>)?(?:\[\])?\s+([a-z]\w*)\s*=\s*new\s+\2/gm,
-    (m, indent: string, _type: string, name: string) => `${indent}const ${name} = new ${_type}`,
+    (m, indent: string, _type: string, name: string) =>
+      `${indent}const ${name} = new ${_type}`,
   );
   // Patch HH (v1.0.8): widen the above to ANY RHS, not just `new ${type}`. Catches
   // patterns like `Pattern pattern = Pattern.compile(x)`, `File source = ts.getScreenshotAs()`,
@@ -220,7 +215,7 @@ export function applyJavaIdiomRewrites(
   body = body.replace(/\bBy\.id\s*\(\s*([^)"][^)]*?)\s*\)/g, "`#${$1}`");
 
   // By.name("x") → '[name="x"]'
-  body = body.replace(/\bBy\.name\s*\(\s*"([^"]*)"\s*\)/g, '\'[name="$1"]\'');
+  body = body.replace(/\bBy\.name\s*\(\s*"([^"]*)"\s*\)/g, "'[name=\"$1\"]'");
   body = body.replace(/\bBy\.name\s*\(\s*([^)"][^)]*?)\s*\)/g, '`[name="${$1}"]`');
 
   // By.cssSelector("x") / By.css("x") → "x" (CSS is the default in
@@ -249,7 +244,10 @@ export function applyJavaIdiomRewrites(
   // CSS-like attribute selector since Playwright's getByRole would need
   // page context. We emit a literal text-matching selector.
   body = body.replace(/\bBy\.linkText\s*\(\s*"([^"]*)"\s*\)/g, '"a:has-text(\\"$1\\")"');
-  body = body.replace(/\bBy\.partialLinkText\s*\(\s*"([^"]*)"\s*\)/g, '"a:has-text(\\"$1\\")"');
+  body = body.replace(
+    /\bBy\.partialLinkText\s*\(\s*"([^"]*)"\s*\)/g,
+    '"a:has-text(\\"$1\\")"',
+  );
 
   // By.tagName("x") → "x" (tag selector in CSS)
   body = body.replace(/\bBy\.tagName\s*\(\s*"([^"]*)"\s*\)/g, '"$1"');
@@ -372,10 +370,7 @@ export function applyJavaIdiomRewrites(
 
   // elementExists(el) → await el.isVisible()
   // Only fires on bare expression usage (e.g. `if (elementExists(x))`).
-  body = body.replace(
-    /\belementExists\s*\(\s*([\w.]+)\s*\)/g,
-    "await $1.isVisible()",
-  );
+  body = body.replace(/\belementExists\s*\(\s*([\w.]+)\s*\)/g, "await $1.isVisible()");
 
   // clickElement(el, ...) → await el.click()
   // The trailing args (label, page name, etc) are descriptive — drop them.
@@ -472,7 +467,10 @@ export function applyJavaIdiomRewrites(
   // String[] / int[] / boolean[] / double[] → string[] / number[] / boolean[] / number[]
   // Only fires in declaration positions: after `let`, `const`, `:`, `(` (param), or `,` (multi-decl).
   body = body.replace(/\bString\[\]/g, "string[]");
-  body = body.replace(/\bint\[\]|\blong\[\]|\bshort\[\]|\bdouble\[\]|\bfloat\[\]|\bInteger\[\]|\bLong\[\]|\bDouble\[\]/g, "number[]");
+  body = body.replace(
+    /\bint\[\]|\blong\[\]|\bshort\[\]|\bdouble\[\]|\bfloat\[\]|\bInteger\[\]|\bLong\[\]|\bDouble\[\]/g,
+    "number[]",
+  );
   body = body.replace(/\bboolean\[\]|\bBoolean\[\]/g, "boolean[]");
 
   // List<WebElement> / List<IWebElement> in declarations → Locator (Playwright
@@ -527,15 +525,9 @@ export function applyJavaIdiomRewrites(
   // List.add(item) → list.push(item)
   body = body.replace(/\b([\w.]+)\.add\s*\(\s*([^)]+?)\s*\)/g, "$1.push($2)");
   // List.remove(i) where i is integer index → splice(i, 1)
-  body = body.replace(
-    /\b([\w.]+)\.remove\s*\(\s*(\d+|\w+)\s*\)/g,
-    "$1.splice($2, 1)",
-  );
+  body = body.replace(/\b([\w.]+)\.remove\s*\(\s*(\d+|\w+)\s*\)/g, "$1.splice($2, 1)");
   // List.contains(item) → list.includes(item)
-  body = body.replace(
-    /\b([\w.]+)\.contains\s*\(\s*([^)]+?)\s*\)/g,
-    "$1.includes($2)",
-  );
+  body = body.replace(/\b([\w.]+)\.contains\s*\(\s*([^)]+?)\s*\)/g, "$1.includes($2)");
   // List.isEmpty() → list.length === 0
   body = body.replace(/\b([\w.]+)\.isEmpty\s*\(\s*\)/g, "$1.length === 0");
   // List.indexOf is the same in JS — no rewrite needed.
@@ -552,10 +544,7 @@ export function applyJavaIdiomRewrites(
     "$1[$2]",
   );
   // Map.containsKey(k) → k in map
-  body = body.replace(
-    /\b([\w.]+)\.containsKey\s*\(\s*([^)]+?)\s*\)/g,
-    "$2 in $1",
-  );
+  body = body.replace(/\b([\w.]+)\.containsKey\s*\(\s*([^)]+?)\s*\)/g, "$2 in $1");
   // Map.keySet() → Object.keys(map)
   body = body.replace(/\b([\w.]+)\.keySet\s*\(\s*\)/g, "Object.keys($1)");
   // Map.values() → Object.values(map)
@@ -566,15 +555,9 @@ export function applyJavaIdiomRewrites(
   // Arrays.asList(a, b, c) → [a, b, c]
   body = body.replace(/\bArrays\.asList\s*\(\s*([^)]*)\)/g, "[$1]");
   // Collections.sort(list) → list.sort()
-  body = body.replace(
-    /\bCollections\.sort\s*\(\s*([\w.]+)\s*\)/g,
-    "$1.sort()",
-  );
+  body = body.replace(/\bCollections\.sort\s*\(\s*([\w.]+)\s*\)/g, "$1.sort()");
   // Collections.reverse(list) → list.reverse()
-  body = body.replace(
-    /\bCollections\.reverse\s*\(\s*([\w.]+)\s*\)/g,
-    "$1.reverse()",
-  );
+  body = body.replace(/\bCollections\.reverse\s*\(\s*([\w.]+)\s*\)/g, "$1.reverse()");
 
   // v0.11.3 Patch N: Java collection literals.
   // `new ArrayList<>()` / `new ArrayList<String>()` / `new LinkedList<>()` → `[]`
@@ -651,10 +634,7 @@ export function applyJavaIdiomRewrites(
   );
 
   // .matches("regex") → /regex/.test(<receiver>)
-  body = body.replace(
-    /\b([\w.]+)\.matches\s*\(\s*"([^"]*)"\s*\)/g,
-    "/$2/.test($1)",
-  );
+  body = body.replace(/\b([\w.]+)\.matches\s*\(\s*"([^"]*)"\s*\)/g, "/$2/.test($1)");
 
   // ============================================================
   // 6) Exception-instance methods
@@ -696,27 +676,15 @@ export function applyJavaIdiomRewrites(
   // ============================================================
 
   // str instanceof String → typeof str === 'string'
-  body = body.replace(
-    /\b(\w+)\s+instanceof\s+String\b/g,
-    "typeof $1 === 'string'",
-  );
-  body = body.replace(
-    /\b(\w+)\s+instanceof\s+Integer\b/g,
-    "typeof $1 === 'number'",
-  );
-  body = body.replace(
-    /\b(\w+)\s+instanceof\s+Boolean\b/g,
-    "typeof $1 === 'boolean'",
-  );
+  body = body.replace(/\b(\w+)\s+instanceof\s+String\b/g, "typeof $1 === 'string'");
+  body = body.replace(/\b(\w+)\s+instanceof\s+Integer\b/g, "typeof $1 === 'number'");
+  body = body.replace(/\b(\w+)\s+instanceof\s+Boolean\b/g, "typeof $1 === 'boolean'");
 
   // System.currentTimeMillis() → Date.now()
   body = body.replace(/\bSystem\.currentTimeMillis\s*\(\s*\)/g, "Date.now()");
 
   // throw new RuntimeException(e) → throw e
-  body = body.replace(
-    /\bthrow\s+new\s+RuntimeException\s*\(\s*(\w+)\s*\)/g,
-    "throw $1",
-  );
+  body = body.replace(/\bthrow\s+new\s+RuntimeException\s*\(\s*(\w+)\s*\)/g, "throw $1");
   // Patch KK (v1.0.8): widen throw-new-JavaException → throw new Error.
   // Previously only IllegalArgumentException|IllegalStateException|RuntimeException.
   // Java code throws `throw new Exception("msg")` everywhere; TS has no Exception class.

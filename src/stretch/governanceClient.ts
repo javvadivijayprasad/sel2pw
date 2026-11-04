@@ -20,9 +20,7 @@ export async function ai_governance_sanitize(
   opts: SanitizeOptions = {},
 ): Promise<string> {
   const url =
-    opts.sidecarUrl ??
-    process.env.AI_GOVERNANCE_SIDECAR_URL ??
-    "http://localhost:4900";
+    opts.sidecarUrl ?? process.env.AI_GOVERNANCE_SIDECAR_URL ?? "http://localhost:4900";
   const { body, statusCode } = await request(`${url}/sanitize`, {
     method: "POST",
     headers: { "content-type": "application/json" },

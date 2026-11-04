@@ -191,10 +191,7 @@ export function parseFeature(source: string, filePath: string): FeatureIR | null
   return feature;
 }
 
-function readSteps(
-  lines: string[],
-  startI: number,
-): { steps: StepIR[]; nextI: number } {
+function readSteps(lines: string[], startI: number): { steps: StepIR[]; nextI: number } {
   const steps: StepIR[] = [];
   let i = startI;
   while (i < lines.length) {

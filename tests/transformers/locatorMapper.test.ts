@@ -16,7 +16,7 @@ describe("toPlaywrightLocatorExpr", () => {
 
   it("By.xpath -> page.locator('xpath=…')", () => {
     expect(toPlaywrightLocatorExpr("xpath", "//div[@class='x']", "page")).toBe(
-      'page.locator("xpath=//div[@class=\'x\']")',
+      "page.locator(\"xpath=//div[@class='x']\")",
     );
   });
 
@@ -33,7 +33,7 @@ describe("toPlaywrightLocatorExpr", () => {
   });
 
   it("By.name -> [name=…]", () => {
-    expect(toPlaywrightLocatorExpr("name", "q", "page")).toContain('[name=');
+    expect(toPlaywrightLocatorExpr("name", "q", "page")).toContain("[name=");
   });
 
   it("By.className -> .<class>", () => {

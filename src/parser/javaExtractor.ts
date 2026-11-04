@@ -88,7 +88,9 @@ function extractLocatorFields(source: string): LocatorField[] {
   const all = [...findByFields, ...dedupedByFields];
   return all.map((f) => ({
     ...f,
-    name: f.name.charAt(0).toLowerCase() + f.name.slice(1).replace(/_+([A-Za-z])/g, (_, c: string) => c.toUpperCase()),
+    name:
+      f.name.charAt(0).toLowerCase() +
+      f.name.slice(1).replace(/_+([A-Za-z])/g, (_, c: string) => c.toUpperCase()),
   }));
 }
 
@@ -159,7 +161,9 @@ export function extractTestClass(file: JavaFile): TestClassIR {
     // the scanned tree) still produce a meaningful spec instead of an empty
     // describe block. The full BDD path additionally generates step files
     // when .feature files ARE present.
-    const stepAnno = method.annotations.find((a) => /^(Given|When|Then|And|But)\b/.test(a));
+    const stepAnno = method.annotations.find((a) =>
+      /^(Given|When|Then|And|But)\b/.test(a),
+    );
     const testAnno = method.annotations.find((a) => /^Test\b/.test(a)) ?? stepAnno;
     if (testAnno) {
       const description = parseAnnoArg(testAnno, "description");
@@ -364,7 +368,10 @@ function readMethodSignature(
     ? splitTopLevel(paramsRaw, ",").map((p) => {
         const parts = p.trim().split(/\s+/);
         const pname = parts[parts.length - 1];
-        const ptype = parts.slice(0, -1).join(" ").replace(/^final\s+/, "");
+        const ptype = parts
+          .slice(0, -1)
+          .join(" ")
+          .replace(/^final\s+/, "");
         return { name: pname, javaType: ptype || "Object" };
       })
     : [];
@@ -446,7 +453,10 @@ function extractMethods(source: string): PageMethodIR[] {
       ? splitTopLevel(paramsRaw, ",").map((p) => {
           const parts = p.trim().split(/\s+/);
           const pname = parts[parts.length - 1];
-          const ptype = parts.slice(0, -1).join(" ").replace(/^final\s+/, "");
+          const ptype = parts
+            .slice(0, -1)
+            .join(" ")
+            .replace(/^final\s+/, "");
           return { name: pname, javaType: ptype || "Object" };
         })
       : [];

@@ -59,11 +59,12 @@ export function emitPageObject(
   // importing or inheriting from them produces a Cannot-find-module error.
   // Same guard list as src/scanner/projectScanner.ts > isInfrastructureName.
   const _parentLooksInfra = ir.extendsClass
-    ? /^(?:DriverManager|WebDriverManager|DriverFactory|WebDriverFactory|BrowserFactory|BrowserManager|DriverProvider|WebDriverProvider|BrowserProvider|SeleniumDriverManager|DriverInitializer|DriverConfiguration|BrowserConfiguration|DriverContext|WebDriverContext|TargetFactory|ChromeOptionsBuilder|FirefoxOptionsBuilder|EdgeOptionsBuilder|BrowserOptionsBuilder|CapabilitiesBuilder|DesiredCapabilitiesBuilder)$/.test(ir.extendsClass)
+    ? /^(?:DriverManager|WebDriverManager|DriverFactory|WebDriverFactory|BrowserFactory|BrowserManager|DriverProvider|WebDriverProvider|BrowserProvider|SeleniumDriverManager|DriverInitializer|DriverConfiguration|BrowserConfiguration|DriverContext|WebDriverContext|TargetFactory|ChromeOptionsBuilder|FirefoxOptionsBuilder|EdgeOptionsBuilder|BrowserOptionsBuilder|CapabilitiesBuilder|DesiredCapabilitiesBuilder)$/.test(
+        ir.extendsClass,
+      )
     : false;
-  const _extendsClause = ir.extendsClass && !_parentLooksInfra
-    ? ` extends ${ir.extendsClass}`
-    : "";
+  const _extendsClause =
+    ir.extendsClass && !_parentLooksInfra ? ` extends ${ir.extendsClass}` : "";
   if (ir.extendsClass && !_parentLooksInfra) {
     const parentFile = pageObjectFileName(ir.extendsClass).replace(/\.ts$/, "");
     lines.push(`import { ${ir.extendsClass} } from './${parentFile}';`);
@@ -106,7 +107,9 @@ export function emitPageObject(
       const preferred = toPlaywrightLocatorExpr(f.by, f.value, "page");
       lines.push(`    this.${f.name} = healOrThrow(page, {`);
       lines.push(`      preferred: ${preferred},`);
-      lines.push(`      context: { page: ${JSON.stringify(ir.className)}, name: ${JSON.stringify(f.name)} },`);
+      lines.push(
+        `      context: { page: ${JSON.stringify(ir.className)}, name: ${JSON.stringify(f.name)} },`,
+      );
       lines.push(`    });`);
     } else {
       lines.push(renderLocatorFieldAssignment(f));
@@ -198,20 +201,92 @@ export function emitPageObject(
     // `By.xpath("//a[await this.text()='X']")` because `text()` is inside
     // a string but the regex doesn't know that.
     const KNOWN_GLOBALS = new Set([
-      "if", "else", "for", "while", "do", "switch", "case", "return", "throw",
-      "try", "catch", "finally", "new", "typeof", "instanceof", "void",
-      "function", "async", "await", "yield", "break", "continue", "default",
-      "delete", "in", "of", "let", "const", "var",
-      "console", "expect", "test", "page", "JSON", "Math", "Date", "String",
-      "Number", "Boolean", "Array", "Object", "Promise", "Set", "Map",
-      "Symbol", "Error", "RegExp", "parseInt", "parseFloat", "isNaN",
-      "isFinite", "encodeURIComponent", "decodeURIComponent",
-      "require", "describe", "it", "beforeEach", "afterEach", "beforeAll", "afterAll",
+      "if",
+      "else",
+      "for",
+      "while",
+      "do",
+      "switch",
+      "case",
+      "return",
+      "throw",
+      "try",
+      "catch",
+      "finally",
+      "new",
+      "typeof",
+      "instanceof",
+      "void",
+      "function",
+      "async",
+      "await",
+      "yield",
+      "break",
+      "continue",
+      "default",
+      "delete",
+      "in",
+      "of",
+      "let",
+      "const",
+      "var",
+      "console",
+      "expect",
+      "test",
+      "page",
+      "JSON",
+      "Math",
+      "Date",
+      "String",
+      "Number",
+      "Boolean",
+      "Array",
+      "Object",
+      "Promise",
+      "Set",
+      "Map",
+      "Symbol",
+      "Error",
+      "RegExp",
+      "parseInt",
+      "parseFloat",
+      "isNaN",
+      "isFinite",
+      "encodeURIComponent",
+      "decodeURIComponent",
+      "require",
+      "describe",
+      "it",
+      "beforeEach",
+      "afterEach",
+      "beforeAll",
+      "afterAll",
       // XPath / CSS function names that show up inside locator strings
-      "text", "contains", "starts", "ends", "normalize", "translate",
-      "concat", "substring", "string", "boolean", "number", "count",
-      "id", "name", "lang", "local", "namespace", "position", "last",
-      "current", "key", "format", "ceiling", "floor", "round",
+      "text",
+      "contains",
+      "starts",
+      "ends",
+      "normalize",
+      "translate",
+      "concat",
+      "substring",
+      "string",
+      "boolean",
+      "number",
+      "count",
+      "id",
+      "name",
+      "lang",
+      "local",
+      "namespace",
+      "position",
+      "last",
+      "current",
+      "key",
+      "format",
+      "ceiling",
+      "floor",
+      "round",
     ]);
 
     // Step 1: replace string literals + line/block comments with placeholders

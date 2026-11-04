@@ -74,9 +74,7 @@ describe("applyApiRewrites", () => {
   });
 
   it("declares Java primitives as const", () => {
-    expect(applyApiRewrites("String name = doIt();").body).toBe(
-      "const name = doIt();",
-    );
+    expect(applyApiRewrites("String name = doIt();").body).toBe("const name = doIt();");
     expect(applyApiRewrites("int n = 1;").body).toBe("const n = 1;");
     expect(applyApiRewrites("boolean ok = true;").body).toBe("const ok = true;");
   });

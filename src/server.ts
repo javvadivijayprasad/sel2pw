@@ -6,15 +6,8 @@ import { promisify } from "util";
 
 import { convert, analyze } from "./index";
 import { JobStore } from "./server/jobs";
-import {
-  ConvertRequestBody,
-  JobRecord,
-  summaryToStats,
-} from "./server/jobTypes";
-import {
-  ArtifactDriver,
-  makeArtifactDriver,
-} from "./server/artifacts";
+import { ConvertRequestBody, JobRecord, summaryToStats } from "./server/jobTypes";
+import { ArtifactDriver, makeArtifactDriver } from "./server/artifacts";
 import { buildProvenance } from "./server/provenance";
 import {
   resolveGovernanceConfig,
@@ -43,8 +36,7 @@ interface ServerConfig {
 }
 
 function loadConfig(): ServerConfig {
-  const workDir =
-    process.env.SEL2PW_WORK_DIR ?? path.resolve(process.cwd(), ".sel2pw");
+  const workDir = process.env.SEL2PW_WORK_DIR ?? path.resolve(process.cwd(), ".sel2pw");
   return {
     port: parseInt(process.env.PORT ?? "4200", 10),
     workDir,
@@ -91,90 +83,108 @@ export async function createApp(): Promise<{
   });
 
   // ----- POST /analyze (sync) -----
-  app.post("/analyze", asyncHandler(async (req, res) => {
-    const body = req.body as { input?: { kind: string; data_url: string } };
-    if (!body?.input?.data_url) {
-      return res.status(400).json({ error: "input.data_url is required" });
-    }
-    const inputDir = await materialiseInput(body.input, config);
-    try {
-      const result = await analyze(inputDir);
-      res.json(result);
-    } finally {
-      // analyze() doesn't write anything; clean up materialised input.
-      await fs.remove(inputDir).catch(() => undefined);
-    }
-  }));
+  app.post(
+    "/analyze",
+    asyncHandler(async (req, res) => {
+      const body = req.body as { input?: { kind: string; data_url: string } };
+      if (!body?.input?.data_url) {
+        return res.status(400).json({ error: "input.data_url is required" });
+      }
+      const inputDir = await materialiseInput(body.input, config);
+      try {
+        const result = await analyze(inputDir);
+        res.json(result);
+      } finally {
+        // analyze() doesn't write anything; clean up materialised input.
+        await fs.remove(inputDir).catch(() => undefined);
+      }
+    }),
+  );
 
   // ----- POST /convert (async — enqueue, run in background) -----
-  app.post("/convert", asyncHandler(async (req, res) => {
-    const body = req.body as ConvertRequestBody;
-    if (!body?.input?.data_url) {
-      return res.status(400).json({ error: "input.data_url is required" });
-    }
+  app.post(
+    "/convert",
+    asyncHandler(async (req, res) => {
+      const body = req.body as ConvertRequestBody;
+      if (!body?.input?.data_url) {
+        return res.status(400).json({ error: "input.data_url is required" });
+      }
 
-    const jobId = jobStore.newId();
-    const now = new Date().toISOString();
-    const job: JobRecord = await jobStore.create({
-      jobId,
-      status: "queued",
-      request: body,
-      created_at: now,
-      updated_at: now,
-    });
-
-    // Run in background — we don't block the HTTP response on conversion.
-    setImmediate(() => {
-      runJob(jobId, body, { jobStore, artifacts, config }).catch((err) => {
-        console.error(`[sel2pw] job ${jobId} crashed`, err);
+      const jobId = jobStore.newId();
+      const now = new Date().toISOString();
+      const job: JobRecord = await jobStore.create({
+        jobId,
+        status: "queued",
+        request: body,
+        created_at: now,
+        updated_at: now,
       });
-    });
 
-    res.status(202).json({ jobId: job.jobId, status: job.status });
-  }));
+      // Run in background — we don't block the HTTP response on conversion.
+      setImmediate(() => {
+        runJob(jobId, body, { jobStore, artifacts, config }).catch((err) => {
+          console.error(`[sel2pw] job ${jobId} crashed`, err);
+        });
+      });
+
+      res.status(202).json({ jobId: job.jobId, status: job.status });
+    }),
+  );
 
   // ----- GET /jobs/:id -----
-  app.get("/jobs/:id", asyncHandler(async (req, res) => {
-    const job = await jobStore.get(req.params.id);
-    if (!job) return res.status(404).json({ error: "job not found" });
-    res.json(job);
-  }));
+  app.get(
+    "/jobs/:id",
+    asyncHandler(async (req, res) => {
+      const job = await jobStore.get(req.params.id);
+      if (!job) return res.status(404).json({ error: "job not found" });
+      res.json(job);
+    }),
+  );
 
   // ----- GET /jobs/:id/artifact -----
-  app.get("/jobs/:id/artifact", asyncHandler(async (req, res) => {
-    const job = await jobStore.get(req.params.id);
-    if (!job) return res.status(404).json({ error: "job not found" });
-    if (job.status !== "succeeded" || !job.artifact_url) {
-      return res.status(409).json({ error: "artifact not ready", status: job.status });
-    }
-    const { stream, contentType, size } = await artifacts.openRead(job.artifact_url);
-    res.setHeader("content-type", contentType);
-    res.setHeader("content-disposition", `attachment; filename="${job.jobId}.zip"`);
-    if (size) res.setHeader("content-length", String(size));
-    stream.pipe(res);
-  }));
+  app.get(
+    "/jobs/:id/artifact",
+    asyncHandler(async (req, res) => {
+      const job = await jobStore.get(req.params.id);
+      if (!job) return res.status(404).json({ error: "job not found" });
+      if (job.status !== "succeeded" || !job.artifact_url) {
+        return res.status(409).json({ error: "artifact not ready", status: job.status });
+      }
+      const { stream, contentType, size } = await artifacts.openRead(job.artifact_url);
+      res.setHeader("content-type", contentType);
+      res.setHeader("content-disposition", `attachment; filename="${job.jobId}.zip"`);
+      if (size) res.setHeader("content-length", String(size));
+      stream.pipe(res);
+    }),
+  );
 
   // ----- GET /jobs/:id/review -----
-  app.get("/jobs/:id/review", asyncHandler(async (req, res) => {
-    const job = await jobStore.get(req.params.id);
-    if (!job) return res.status(404).json({ error: "job not found" });
-    if (!job.review_url) return res.status(409).json({ error: "review not ready" });
-    const { stream, contentType } = await artifacts.openRead(job.review_url);
-    res.setHeader("content-type", contentType);
-    stream.pipe(res);
-  }));
+  app.get(
+    "/jobs/:id/review",
+    asyncHandler(async (req, res) => {
+      const job = await jobStore.get(req.params.id);
+      if (!job) return res.status(404).json({ error: "job not found" });
+      if (!job.review_url) return res.status(409).json({ error: "review not ready" });
+      const { stream, contentType } = await artifacts.openRead(job.review_url);
+      res.setHeader("content-type", contentType);
+      stream.pipe(res);
+    }),
+  );
 
   // ----- POST /feedback -----
-  app.post("/feedback", asyncHandler(async (req, res) => {
-    const body = req.body as { jobId?: string; rating?: number; notes?: string };
-    if (!body.jobId) return res.status(400).json({ error: "jobId required" });
-    const target = path.join(config.workDir, "feedback.jsonl");
-    await fs.appendFile(
-      target,
-      JSON.stringify({ ...body, received_at: new Date().toISOString() }) + "\n",
-    );
-    res.status(204).end();
-  }));
+  app.post(
+    "/feedback",
+    asyncHandler(async (req, res) => {
+      const body = req.body as { jobId?: string; rating?: number; notes?: string };
+      if (!body.jobId) return res.status(400).json({ error: "jobId required" });
+      const target = path.join(config.workDir, "feedback.jsonl");
+      await fs.appendFile(
+        target,
+        JSON.stringify({ ...body, received_at: new Date().toISOString() }) + "\n",
+      );
+      res.status(204).end();
+    }),
+  );
 
   // ----- /admin/* — failure telemetry (Phase 9) -----
   // Behind a shared-secret header; no auth = endpoints disabled. The
@@ -192,25 +202,37 @@ export async function createApp(): Promise<{
     next();
   };
 
-  app.get("/admin/failures", adminGuard, asyncHandler(async (req, res) => {
-    const limit = parseInt((req.query.limit as string) ?? "50", 10);
-    const store = createFailureStore(config.telemetryDbPath);
-    res.json(store.listRecentFailures(limit));
-    store.close();
-  }));
+  app.get(
+    "/admin/failures",
+    adminGuard,
+    asyncHandler(async (req, res) => {
+      const limit = parseInt((req.query.limit as string) ?? "50", 10);
+      const store = createFailureStore(config.telemetryDbPath);
+      res.json(store.listRecentFailures(limit));
+      store.close();
+    }),
+  );
 
-  app.get("/admin/patterns", adminGuard, asyncHandler(async (req, res) => {
-    const limit = parseInt((req.query.limit as string) ?? "20", 10);
-    const store = createFailureStore(config.telemetryDbPath);
-    res.json(store.listFailurePatterns(limit));
-    store.close();
-  }));
+  app.get(
+    "/admin/patterns",
+    adminGuard,
+    asyncHandler(async (req, res) => {
+      const limit = parseInt((req.query.limit as string) ?? "20", 10);
+      const store = createFailureStore(config.telemetryDbPath);
+      res.json(store.listFailurePatterns(limit));
+      store.close();
+    }),
+  );
 
-  app.get("/admin/stats", adminGuard, asyncHandler(async (_req, res) => {
-    const store = createFailureStore(config.telemetryDbPath);
-    res.json(store.getStats());
-    store.close();
-  }));
+  app.get(
+    "/admin/stats",
+    adminGuard,
+    asyncHandler(async (_req, res) => {
+      const store = createFailureStore(config.telemetryDbPath);
+      res.json(store.getStats());
+      store.close();
+    }),
+  );
 
   // ----- error handler -----
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -290,10 +312,7 @@ async function runJob(
       path.join(outputDir, "CONVERSION_REVIEW.md"),
       `${jobId}/CONVERSION_REVIEW.md`,
     );
-    const govUrl = await artifacts.putFile(
-      auditPath,
-      `${jobId}/governance_audit.json`,
-    );
+    const govUrl = await artifacts.putFile(auditPath, `${jobId}/governance_audit.json`);
 
     const updated = await jobStore.update(jobId, {
       status: "succeeded",

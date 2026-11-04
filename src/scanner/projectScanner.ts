@@ -63,14 +63,64 @@ function extractPackageName(source: string): string {
 // "class for handling X" — matching `class for` literally), reject and
 // fall through to the next match (or fall back to the file basename).
 const JAVA_RESERVED = new Set([
-  "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char",
-  "class", "const", "continue", "default", "do", "double", "else", "enum",
-  "extends", "final", "finally", "float", "for", "goto", "if", "implements",
-  "import", "instanceof", "int", "interface", "long", "native", "new", "null",
-  "package", "private", "protected", "public", "return", "short", "static",
-  "strictfp", "super", "switch", "synchronized", "this", "throw", "throws",
-  "transient", "true", "false", "try", "void", "volatile", "while", "yield",
-  "record", "sealed", "permits", "var",
+  "abstract",
+  "assert",
+  "boolean",
+  "break",
+  "byte",
+  "case",
+  "catch",
+  "char",
+  "class",
+  "const",
+  "continue",
+  "default",
+  "do",
+  "double",
+  "else",
+  "enum",
+  "extends",
+  "final",
+  "finally",
+  "float",
+  "for",
+  "goto",
+  "if",
+  "implements",
+  "import",
+  "instanceof",
+  "int",
+  "interface",
+  "long",
+  "native",
+  "new",
+  "null",
+  "package",
+  "private",
+  "protected",
+  "public",
+  "return",
+  "short",
+  "static",
+  "strictfp",
+  "super",
+  "switch",
+  "synchronized",
+  "this",
+  "throw",
+  "throws",
+  "transient",
+  "true",
+  "false",
+  "try",
+  "void",
+  "volatile",
+  "while",
+  "yield",
+  "record",
+  "sealed",
+  "permits",
+  "var",
 ]);
 
 function extractClassName(source: string): string | null {
@@ -79,14 +129,15 @@ function extractClassName(source: string): string | null {
   // would falsely match the class-declaration regex below, returning "for"
   // as the class name (selenium12/13 made this bug visible — fix in 0.10.4).
   const stripped = source
-    .replace(/\/\*[\s\S]*?\*\//g, "")  // block / Javadoc comments
-    .replace(/\/\/[^\n]*/g, "");       // line comments
+    .replace(/\/\*[\s\S]*?\*\//g, "") // block / Javadoc comments
+    .replace(/\/\/[^\n]*/g, ""); // line comments
 
   // Find ALL declarations and return the first one whose captured name is
   // not a Java reserved word. Belt-and-suspenders on top of the comment
   // strip — strings like `"class for X"` could still sneak through, but
   // the reserved-word filter catches the common cases.
-  const re = /^\s*(?:public\s+|protected\s+|private\s+|abstract\s+|final\s+|static\s+)*(?:class|enum|interface|record)\s+(\w[\w$]*)/gm;
+  const re =
+    /^\s*(?:public\s+|protected\s+|private\s+|abstract\s+|final\s+|static\s+)*(?:class|enum|interface|record)\s+(\w[\w$]*)/gm;
   let m: RegExpExecArray | null;
   while ((m = re.exec(stripped)) !== null) {
     const name = m[1];
@@ -101,16 +152,21 @@ function classify(className: string, source: string): SourceKind {
     /@Test\b/.test(source) || /\[(Test|TestCase|TestMethod|Fact|Theory)\b/.test(source);
   const hasFindBy = /@FindBy\b/.test(source) || /\[FindsBy\b/.test(source);
   const hasByStatic =
-    /\bBy\.(id|cssSelector|xpath|name|linkText|partialLinkText|tagName|className)\s*\(/.test(source) ||
-    /\bBy\.(Id|CssSelector|XPath|Name|LinkText|PartialLinkText|TagName|ClassName)\s*\(/.test(source);
+    /\bBy\.(id|cssSelector|xpath|name|linkText|partialLinkText|tagName|className)\s*\(/.test(
+      source,
+    ) ||
+    /\bBy\.(Id|CssSelector|XPath|Name|LinkText|PartialLinkText|TagName|ClassName)\s*\(/.test(
+      source,
+    );
   const hasWebDriverField =
     /\bWebDriver\s+\w+\s*[;=]/.test(source) || /\bIWebDriver\s+\w+\s*[;=]/.test(source);
   const hasLifecycle =
     /@(Before|After)(Suite|Class|Method|Test)\b/.test(source) ||
-    /\[(SetUp|TearDown|OneTimeSetUp|OneTimeTearDown|TestInitialize|TestCleanup|ClassInitialize|ClassCleanup|BeforeScenario|AfterScenario|BeforeFeature|AfterFeature)\b/.test(source);
+    /\[(SetUp|TearDown|OneTimeSetUp|OneTimeTearDown|TestInitialize|TestCleanup|ClassInitialize|ClassCleanup|BeforeScenario|AfterScenario|BeforeFeature|AfterFeature)\b/.test(
+      source,
+    );
   const hasSpecFlowBinding =
-    /\[Binding\b/.test(source) ||
-    /\[(Given|When|Then|And|But)\b/.test(source);
+    /\[Binding\b/.test(source) || /\[(Given|When|Then|And|But)\b/.test(source);
   // Java Cucumber step defs — the canonical signal is `import io.cucumber.*`
   // OR Java annotations matching the BDD step set. We need a SEPARATE check
   // from `hasLifecycle` because a step-def class with a `WebDriver driver`
@@ -123,9 +179,13 @@ function classify(className: string, source: string): SourceKind {
   // Shared driver-instantiation predicates — used by both the v2.0 Phase 1
   // data-type checks below AND the v1.0.8 infrastructure check further down.
   const hasThreadLocalDriver =
-    /\bThreadLocal\s*<\s*(?:WebDriver|IWebDriver|RemoteWebDriver|EventFiringWebDriver|AppiumDriver)\b/.test(source);
+    /\bThreadLocal\s*<\s*(?:WebDriver|IWebDriver|RemoteWebDriver|EventFiringWebDriver|AppiumDriver)\b/.test(
+      source,
+    );
   const instantiatesConcreteDriver =
-    /\bnew\s+(?:ChromeDriver|FirefoxDriver|EdgeDriver|SafariDriver|InternetExplorerDriver|OperaDriver|RemoteWebDriver|AndroidDriver|IOSDriver|AppiumDriver)\s*\(/.test(source);
+    /\bnew\s+(?:ChromeDriver|FirefoxDriver|EdgeDriver|SafariDriver|InternetExplorerDriver|OperaDriver|RemoteWebDriver|AndroidDriver|IOSDriver|AppiumDriver)\s*\(/.test(
+      source,
+    );
 
   // ============================================================
   // Phase 1 (v2.0) — richer Java type detection
@@ -149,22 +209,28 @@ function classify(className: string, source: string): SourceKind {
   //    Inner enums inside other classes are intentionally not caught here; they
   //    are handled at emit time when the parent is processed.
   const isJavaEnum =
-    /^\s*(?:public\s+|protected\s+|private\s+)?enum\s+\w+\s*(?:implements\s+[\w.,<>\s[\]]+)?\s*\{/m.test(source);
+    /^\s*(?:public\s+|protected\s+|private\s+)?enum\s+\w+\s*(?:implements\s+[\w.,<>\s[\]]+)?\s*\{/m.test(
+      source,
+    );
 
   // 2) Java record (Java 14+) — `public record X(...) { ... }`. Tolerate
   //    `final` and modifier ordering, and tolerate a trailing `implements`.
   const isJavaRecord =
-    /^\s*(?:public\s+|protected\s+|private\s+)?(?:final\s+|abstract\s+)?record\s+\w+\s*\(/m.test(source);
+    /^\s*(?:public\s+|protected\s+|private\s+)?(?:final\s+|abstract\s+)?record\s+\w+\s*\(/m.test(
+      source,
+    );
 
   // 3) Java exception — class extends *Exception / *Error / Throwable. We also
   //    catch the canonical "FooException" / "FooError" suffix so projects that
   //    extend their own base exception (BaseException extends RuntimeException)
   //    still classify correctly.
   const extendsThrowable =
-    /^\s*public\s+(?:abstract\s+|final\s+)?class\s+\w+\s+extends\s+\w*(?:Exception|Error|Throwable)\b/m.test(source);
-  const hasExceptionSuffix =
-    /(?:Exception|Error|Throwable)$/.test(className);
-  const isJavaException = extendsThrowable || (hasExceptionSuffix && /^\s*public\s+class\b/m.test(source));
+    /^\s*public\s+(?:abstract\s+|final\s+)?class\s+\w+\s+extends\s+\w*(?:Exception|Error|Throwable)\b/m.test(
+      source,
+    );
+  const hasExceptionSuffix = /(?:Exception|Error|Throwable)$/.test(className);
+  const isJavaException =
+    extendsThrowable || (hasExceptionSuffix && /^\s*public\s+class\b/m.test(source));
 
   // 4) Owner-library config interface — Aeonbits Owner is the canonical Java
   //    config library. Distinctive signals are `import org.aeonbits.owner.*` +
@@ -183,8 +249,11 @@ function classify(className: string, source: string): SourceKind {
   //    Deliberately conservative: must have at least one `private TYPE name;`
   //    field AND at least one `public TYPE getX()` getter AND no test/page
   //    annotations. We allow @JsonProperty / Lombok-style annotations on fields.
-  const hasPrivateField = /^\s*private\s+(?:final\s+)?[\w.<>,\s[\]]+\s+\w+\s*[=;]/m.test(source);
-  const hasPublicGetter = /^\s*public\s+[\w.<>,\s[\]]+\s+get[A-Z]\w*\s*\(\s*\)\s*\{/m.test(source);
+  const hasPrivateField = /^\s*private\s+(?:final\s+)?[\w.<>,\s[\]]+\s+\w+\s*[=;]/m.test(
+    source,
+  );
+  const hasPublicGetter =
+    /^\s*public\s+[\w.<>,\s[\]]+\s+get[A-Z]\w*\s*\(\s*\)\s*\{/m.test(source);
   const isPojo =
     hasPrivateField &&
     hasPublicGetter &&
@@ -215,15 +284,21 @@ function classify(className: string, source: string): SourceKind {
   // fall through to "unknown" so the customUtilDetector can emit typed
   // stubs with reporter / event-listener guidance.
   const hasJavaListenerInterface =
-    /\bimplements\s+(?:I(?:Test|Suite|Configuration|Execution|InvokedMethod)?Listener|IReporter|IAnnotationTransformer|IRetryAnalyzer|IRetry|IAlterSuiteListener)\b/.test(source) ||
-    /\bextends\s+(?:Tests?Listener|EventFiringWebDriver|AbstractWebDriverEventListener|TestListenerAdapter)\b/.test(source);
+    /\bimplements\s+(?:I(?:Test|Suite|Configuration|Execution|InvokedMethod)?Listener|IReporter|IAnnotationTransformer|IRetryAnalyzer|IRetry|IAlterSuiteListener)\b/.test(
+      source,
+    ) ||
+    /\bextends\s+(?:Tests?Listener|EventFiringWebDriver|AbstractWebDriverEventListener|TestListenerAdapter)\b/.test(
+      source,
+    );
 
   // ActionDriver / ElementAction / WebActions — classes whose name ends in
   // a Selenium-helper suffix BUT that aren't real Page Objects. They wrap
   // a `WebDriver` field plus convenience methods like `clickElement(...)`.
   // Routing them to "unknown" lets customUtilDetector emit a wrapper stub.
   const isWebDriverWrapperShape =
-    /^(Action|Element|Web|Custom|Common|Selenium)?(Driver|Actions?|Helper|Utils?)$/.test(className) &&
+    /^(Action|Element|Web|Custom|Common|Selenium)?(Driver|Actions?|Helper|Utils?)$/.test(
+      className,
+    ) &&
     className !== "WebDriver" &&
     className !== "IWebDriver" &&
     className !== "By";
@@ -242,11 +317,15 @@ function classify(className: string, source: string): SourceKind {
   // Without this check they would emit broken bodies referencing `driver.get()`,
   // `driver.set()`, `driver.remove()` that have no Playwright equivalent.
   const isInfrastructureName =
-    /^(?:DriverManager|WebDriverManager|DriverFactory|WebDriverFactory|BrowserFactory|BrowserManager|DriverProvider|WebDriverProvider|BrowserProvider|SeleniumDriverManager|DriverInitializer|DriverConfiguration|BrowserConfiguration|DriverContext|WebDriverContext)$/.test(className);
+    /^(?:DriverManager|WebDriverManager|DriverFactory|WebDriverFactory|BrowserFactory|BrowserManager|DriverProvider|WebDriverProvider|BrowserProvider|SeleniumDriverManager|DriverInitializer|DriverConfiguration|BrowserConfiguration|DriverContext|WebDriverContext)$/.test(
+      className,
+    );
   const isPureDriverSetup =
     instantiatesConcreteDriver && !hasTestAnnotation && !hasFindBy;
   const isOptionsBuilder =
-    /^(?:ChromeOptionsBuilder|FirefoxOptionsBuilder|EdgeOptionsBuilder|BrowserOptionsBuilder|CapabilitiesBuilder|DesiredCapabilitiesBuilder)$/.test(className);
+    /^(?:ChromeOptionsBuilder|FirefoxOptionsBuilder|EdgeOptionsBuilder|BrowserOptionsBuilder|CapabilitiesBuilder|DesiredCapabilitiesBuilder)$/.test(
+      className,
+    );
 
   // Guard against false positives. Classes that ALSO look like base test
   // classes (BaseTest, TestBase, *Base) or have lifecycle methods are
@@ -254,17 +333,26 @@ function classify(className: string, source: string): SourceKind {
   // Same for classes that hold a WebDriver field via dependency injection
   // (constructor-injected DriverManager wrappers used by Page Objects).
   const looksLikeBase =
-    /^(?:BaseTest|TestBase|.*Base|.*BaseTest|AbstractTest|AbstractBaseTest|Base\w*|\w*Base|Base\w*Test|Base\w*Spec|Base\w*Web|\w*BaseWeb)$/.test(className) ||
-    hasLifecycle;
+    /^(?:BaseTest|TestBase|.*Base|.*BaseTest|AbstractTest|AbstractBaseTest|Base\w*|\w*Base|Base\w*Test|Base\w*Spec|Base\w*Web|\w*BaseWeb)$/.test(
+      className,
+    ) || hasLifecycle;
   if (
-    (isInfrastructureName || hasThreadLocalDriver || isPureDriverSetup || isOptionsBuilder) &&
+    (isInfrastructureName ||
+      hasThreadLocalDriver ||
+      isPureDriverSetup ||
+      isOptionsBuilder) &&
     !looksLikeBase
   ) {
     return "infrastructure";
   }
 
   // Base classes: name pattern OR (lifecycle methods but no @Test)
-  if (/^(?:BaseTest|TestBase|.*Base|Base\w*|\w*Base|AbstractTest|AbstractBaseTest|Base\w*Test|Base\w*Spec|Base\w*Web|\w*BaseWeb)$/.test(className) && !hasTestAnnotation) {
+  if (
+    /^(?:BaseTest|TestBase|.*Base|Base\w*|\w*Base|AbstractTest|AbstractBaseTest|Base\w*Test|Base\w*Spec|Base\w*Web|\w*BaseWeb)$/.test(
+      className,
+    ) &&
+    !hasTestAnnotation
+  ) {
     return "base";
   }
 
@@ -293,7 +381,9 @@ function classify(className: string, source: string): SourceKind {
     hasFindBy ||
     hasByStatic ||
     hasWebDriverField ||
-    /(?:Page|PageObject|PageObjects|Section|Component|Locators|Elements|Screen|View)$/.test(className)
+    /(?:Page|PageObject|PageObjects|Section|Component|Locators|Elements|Screen|View)$/.test(
+      className,
+    )
   ) {
     return "page-object";
   }

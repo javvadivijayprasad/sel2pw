@@ -41,9 +41,7 @@ describe("BaseTest fixture emission", () => {
 
     const { converted } = emitFixture(file);
     expect(converted.source).not.toContain("driver.quit");
-    expect(countChar(converted.source, "{")).toBe(
-      countChar(converted.source, "}"),
-    );
+    expect(countChar(converted.source, "{")).toBe(countChar(converted.source, "}"));
   });
 });
 
