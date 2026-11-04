@@ -1,5 +1,20 @@
 # sel2pw VS Code Extension — Changelog
 
+## [2.1.1] — In sync with the npm package
+
+The extension now uses the same version number as the `@vijaypjavvadi/sel2pw` engine it bundles, and is released by the same workflow from the same commit. Version 0.2.1 on the Marketplace bundled engine 2.0.6; 2.1.1 bundles engine 2.1.1.
+
+### Bundled engine changes since 2.0.6
+
+- Stray closing brace no longer left in `tests/fixtures.ts` when `BaseTest` has `if (driver != null) { driver.quit(); }` (#26, thanks @bfs2021).
+- `FILE_MAPPING.md` and `conversion-result.json` no longer report a test class as the page-object file when names share a stem (#29, thanks @bfs2021).
+- `--dry-run --format=json` for machine-readable previews (#27, thanks @OKAN-SOFTWARE). Not yet exposed in the extension UI.
+- All fixes from engine 2.0.7 to 2.1.1; see the main [CHANGELOG](https://github.com/javvadivijayprasad/sel2pw/blob/main/CHANGELOG.md).
+
+### Extension changes
+
+- No command or setting changes. The jump from 0.2.1 to 2.1.1 is the version-alignment only.
+
 ## [0.2.0] — Sync with sel2pw 2.x (canonical Playwright layout, FILE_MAPPING, --dry-run preview, this.driver fix, Sauce Labs strip, Hamcrest ordering)
 
 The bundled `@vijaypjavvadi/sel2pw` CLI dependency bumps from `^0.10.6` to `^2.0.6`. That pulls in every conversion-quality improvement from the v1.0.x → v2.0.6 npm release cycle:

@@ -34,3 +34,7 @@ validation_week_plan.md
 
 # Research papers are kept outside this repo
 paper/
+
+# Backups made before edits, and packaged extensions
+*.bak
+*.vsix

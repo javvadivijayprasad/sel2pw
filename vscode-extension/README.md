@@ -4,6 +4,8 @@ Convert legacy Selenium Java/TestNG/BDD test suites to Playwright TypeScript dir
 
 Powered by [`@vijaypjavvadi/sel2pw`](https://www.npmjs.com/package/@vijaypjavvadi/sel2pw) — validated against 15 real-world OSS Selenium repositories with zero failed conversions across 409 Java files.
 
+**Version = engine version.** From 2.1.1 the extension carries the same version number as the `@vijaypjavvadi/sel2pw` npm package it bundles, and both are released together. Extension 2.1.1 runs sel2pw 2.1.1.
+
 ## Features
 
 - **Right-click → Convert** in the explorer context menu. Works on any folder containing a Selenium project.
@@ -48,7 +50,7 @@ Non-translatable utility classes (`DriverFactory`, `WaitUtils`, ExtentReports li
 
 - Page Object Model conventions: classes are picked up by name patterns (`*Page`, `*Section`, `*Component`). Non-conforming names need a rename pass first.
 - Generic types with multiple parameters (`Map<String, List<Foo>>`) currently pass through as-is — flagged in the review report for manual correction.
-- LLM fallback (Anthropic / OpenAI / Gemini) for unclassifiable files is available in the CLI but not yet exposed in this extension's UI. Coming in 0.2.0.
+- LLM fallback (Anthropic / OpenAI / Gemini) for unclassifiable files is available in the CLI but not yet exposed in this extension's UI.
 
 ## Reporting issues
 

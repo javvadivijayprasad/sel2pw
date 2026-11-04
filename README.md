@@ -9,7 +9,7 @@
 [![npm total downloads](https://img.shields.io/npm/dt/@vijaypjavvadi/sel2pw.svg)](https://www.npmjs.com/package/@vijaypjavvadi/sel2pw)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/javvadivijayprasad/sel2pw/blob/main/LICENSE)
 [![Node](https://img.shields.io/node/v/@vijaypjavvadi/sel2pw.svg?logo=node.js)](https://nodejs.org/)
-[![CI](https://github.com/javvadivijayprasad/sel2pw/actions/workflows/ci.yml/badge.svg)](https://github.com/javvadivijayprasad/sel2pw/actions/workflows/ci.yml)
+[![CI](https://github.com/javvadivijayprasad/sel2pw/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/javvadivijayprasad/sel2pw/actions/workflows/release.yml)
 [![codebases validated](https://img.shields.io/badge/codebases%20validated-15-brightgreen)](./STATUS.md)
 [![good first issues](https://img.shields.io/github/issues/javvadivijayprasad/sel2pw/good%20first%20issue?color=7057ff&label=good%20first%20issues)](https://github.com/javvadivijayprasad/sel2pw/labels/good%20first%20issue)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
@@ -381,7 +381,7 @@ Your name could be next: pick a [good first issue](https://github.com/javvadivij
 
 If you use `@vijaypjavvadi/sel2pw` in academic work, please cite:
 
-> Javvadi, V. P. (2026). *@vijaypjavvadi/sel2pw: A Deterministic, Rule-Based Migration Toolkit from Selenium Test Suites to Playwright TypeScript Scaffolds* (Version 2.1.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23782649 (all versions: https://doi.org/10.5281/zenodo.20450292)
+> Javvadi, V. P. (2026). *@vijaypjavvadi/sel2pw: A Deterministic, Rule-Based Migration Toolkit from Selenium Test Suites to Playwright TypeScript Scaffolds* [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.20450292 (concept DOI: always resolves to the latest version; each version also has its own DOI on Zenodo)
 
 A machine-readable [`CITATION.cff`](CITATION.cff) file is included in the repository root.
 

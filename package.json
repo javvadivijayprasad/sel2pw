@@ -1,6 +1,6 @@
 {
   "name": "@vijaypjavvadi/sel2pw",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Rule-based migration of Selenium test suites to Playwright TypeScript scaffolds. Java (TestNG/JUnit/Cucumber): java-parser AST extractor with regex fallback. C# (NUnit/SpecFlow): regex/balanced-brace extractor, experimental. Optional LLM fallback (Anthropic / OpenAI / Gemini), off by default.",
   "bin": {
     "sel2pw": "dist/cli.js"
@@ -42,7 +42,12 @@
     "test:cov": "vitest run --coverage",
     "test:update": "vitest run -u",
     "lint": "eslint . --ext .ts && tsc --noEmit",
-    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "sync-version": "node scripts/sync-version.js",
+    "version": "node scripts/sync-version.js",
+    "preflight": "npm run format:check && npm run lint && npm run typecheck && npm run build && npm test"
   },
   "keywords": [
     "selenium",

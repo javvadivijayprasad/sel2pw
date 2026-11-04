@@ -4,6 +4,18 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [2.1.1] — VS Code extension back in sync; one release workflow
+
+### Changed
+
+- **The VS Code extension and the npm package now release together, with the same version.** The Marketplace extension (0.2.1) had been bundling engine 2.0.6; extension 2.1.1 bundles engine 2.1.1. The release workflow packages the extension with the engine built from the same commit and refuses a tag that does not match both `package.json` files.
+- **One workflow, no tokens.** `.github/workflows/release.yml` now runs the checks on every push and pull request (Windows and Ubuntu) and, on a `vX.Y.Z` tag, publishes to npm and the VS Code Marketplace through trusted publishing (OIDC), then creates the GitHub release with the `.vsix` attached. Each publish step skips if that version is already out, so a failed run can be re-run safely. `ci.yml` is removed. See [docs/RELEASING.md](./docs/RELEASING.md).
+- **`npm run preflight`** runs exactly what CI checks: `format:check`, `lint`, `typecheck`, `build`, `test`.
+- Source and tests formatted with the project's Prettier config (formatting only; no behaviour change).
+- `CITATION.cff` and the README citation use the Zenodo concept DOI, which always resolves to the latest version.
+
+---
+
 ## [2.1.0] — JSON dry-run output + two community fixes
 
 The first release with community contributions: thank you to @bfs2021 and @OKAN-SOFTWARE.

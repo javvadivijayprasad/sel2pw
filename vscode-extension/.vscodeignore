@@ -13,3 +13,6 @@ node_modules/**/*.txt
 node_modules/**/test/**
 node_modules/**/tests/**
 node_modules/**/.github/**
+*.vsix
+*.bak
+*.tgz

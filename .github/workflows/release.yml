@@ -1,57 +1,182 @@
-name: Release
-
+name: release
+# The one workflow (same design as attestqa, 2026-11-03).
+#   push to main / pull request  -> "check" only: the same checks on Windows and Ubuntu.
+#   push of a tag vX.Y.Z         -> "check", then "publish": npm, VS Code Marketplace,
+#                                   GitHub release (Zenodo archives the release on its own).
+#   Run workflow (manual)        -> dry run by default: check + package, publish nothing.
+# Every publish step is idempotent: if that version is already out, the step says so and
+# skips, so re-running a failed run is always safe.
+# Locally, `npm run preflight` runs exactly what "check" runs.
+#
+# Keeping npm and the Marketplace in sync: the tag, package.json and
+# vscode-extension/package.json must carry the same version, and the extension is packaged
+# with the engine built from this same commit (not whatever npm resolves), so the
+# Marketplace build always bundles exactly the npm version released with it.
 on:
+  pull_request:
   push:
-    tags:
-      - "v*.*.*"
+    branches: [main]
+    # A pre-release tag (v2.2.0-rc.1) marks a commit and publishes nothing.
+    tags: ["v*.*.*", "!v*.*.*-*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build, test and package only - publish nothing"
+        type: boolean
+        default: true
 
 permissions:
-  contents: write
-  id-token: write
+  contents: write # the GitHub release
+  id-token: write # trusted publishing (npm and Marketplace), npm provenance
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          # Node 22 is the current LTS; Node 20 is deprecated by GitHub
-          # Actions (deprecation banner appeared in the release workflow
-          # summary). Also: npm 12 requires Node 22+, and OIDC trusted
-          # publishing needs a modern npm.
-          node-version: 22
+          node-version: 24
+          cache: npm
+      # The Windows-generated package-lock.json does not record the Linux rollup binary, so
+      # `npm ci` on Linux leaves vitest unable to start (npm/cli#4828). Fresh install with
+      # optional dependencies so each platform gets its own native binaries.
+      - name: Install
+        shell: bash
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install --no-audit --no-fund --include=optional
+      - run: npm run preflight # format:check, lint, typecheck, build, test
+      - name: npm and Marketplace versions are the same
+        shell: bash
+        run: |
+          core=$(node -p "require('./package.json').version")
+          ext=$(node -p "require('./vscode-extension/package.json').version")
+          [ "$core" = "$ext" ] || { echo "::error::package.json is $core but vscode-extension/package.json is $ext - run: npm run sync-version"; exit 1; }
+      - name: Smoke - convert the bundled sample
+        shell: bash
+        run: |
+          out="$RUNNER_TEMP/sel2pw-smoke"
+          node dist/cli.js convert ./examples/selenium-testng-sample --out "$out"
+          test -f "$out/pages/login.page.ts"
+          test -f "$out/tests/login.spec.ts"
+          test -f "$out/CONVERSION_REVIEW.md"
+          test -f "$out/MIGRATION_NOTES.md"
+      - name: Smoke - JSON dry run is valid JSON and writes nothing
+        shell: bash
+        run: |
+          out="$RUNNER_TEMP/sel2pw-dry"
+          node dist/cli.js convert ./examples/selenium-testng-sample --out "$out" --dry-run --format=json > "$RUNNER_TEMP/dry.json"
+          node -e "const r=require(process.argv[1]); if(r.schema!=='sel2pw.conversion-result.v1') process.exit(1)" "$RUNNER_TEMP/dry.json"
+          test ! -e "$out"
+      - name: Extension compiles
+        working-directory: vscode-extension
+        shell: bash
+        run: |
+          npm ci --no-audit --no-fund
+          npm run compile
+
+  publish:
+    needs: check
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
           cache: npm
           registry-url: https://registry.npmjs.org
-      # OIDC trusted publishing to npm requires npm CLI 11.5.1 or later.
-      # Node 22 ships with npm 10.x by default (provenance-capable but not
-      # OIDC-publish-capable), so upgrade to npm 11 explicitly. Pinned to
-      # ^11 because npm@latest (12+) drops support for Node <24 — which
-      # would trip EBADENGINE the moment we try to install it.
-      - name: Upgrade npm to a version with OIDC publish support
-        run: npm install -g npm@11
-      # Nuke lock + node_modules so install resolves fresh on the Linux runner.
-      # See https://github.com/npm/cli/issues/4828 — the Windows-generated
-      # lock file only records win32 platform binaries.
-      - run: rm -rf package-lock.json node_modules
-      - run: npm install --no-audit --no-fund --include=optional
-      - run: npm run lint
+      - run: npm ci --no-audit --no-fund
       - run: npm run build
-      # Tests intentionally skipped here. The matrix `ci.yml` workflow runs
-      # `npm test` across Windows / macOS / Linux on every push and PR — any
-      # real test regression surfaces there. Skipping in the release path
-      # avoids vitest+rollup's recurring Linux-binary issue from blocking
-      # publish on a clean tagged commit.
-      - name: Publish to npm with provenance (via OIDC Trusted Publisher)
-        # v2.0.6 switched from NPM_TOKEN auth to OIDC Trusted Publisher.
-        # Configured at https://www.npmjs.com/package/@vijaypjavvadi/sel2pw/access
-        # under "Trusted Publisher" -> GitHub Actions. npm CLI picks up the
-        # OIDC token automatically because `permissions.id-token: write` is
-        # set at the job level above. No NODE_AUTH_TOKEN env var — with it
-        # present, npm preferred the (2FA-blocked) token over the OIDC
-        # handshake and failed with EOTP.
-        run: npm publish --provenance --access public
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+
+      - name: The tag matches both versions
+        if: github.event_name == 'push'
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          core=$(node -p "require('./package.json').version")
+          ext=$(node -p "require('./vscode-extension/package.json').version")
+          echo "tag $tag, engine $core, extension $ext"
+          [ "$tag" = "$core" ] || { echo "::error::package.json is $core but the tag is v$tag"; exit 1; }
+          [ "$tag" = "$ext" ]  || { echo "::error::vscode-extension/package.json is $ext but the tag is v$tag"; exit 1; }
+
+      - name: Engine - what would ship
+        run: npm pack --dry-run
+
+      - name: Engine - publish to npm
+        if: env.DRY_RUN != 'true'
+        # No token: npm trusted publishing (OIDC). Configured on npmjs.com: package
+        # @vijaypjavvadi/sel2pw -> Settings -> Trusted Publisher -> GitHub Actions, this repo,
+        # workflow release.yml. No NODE_AUTH_TOKEN on purpose: with it present npm prefers the
+        # token and fails with EOTP.
+        run: |
+          name=$(node -p "require('./package.json').name")
+          v=$(node -p "require('./package.json').version")
+          if npm view "$name@$v" version >/dev/null 2>&1; then
+            echo "$name@$v is already on npm - skipping"
+          else
+            npm publish --provenance --access public
+          fi
+
+      - name: Extension - install with the engine from this commit
+        working-directory: vscode-extension
+        run: |
+          v=$(node -p "require('../package.json').version")
+          npm ci --no-audit --no-fund
+          (cd .. && npm pack)
+          npm install --no-save --omit=optional --no-audit --no-fund "../vijaypjavvadi-sel2pw-$v.tgz"
+          bundled=$(node -p "require('./node_modules/@vijaypjavvadi/sel2pw/package.json').version")
+          echo "extension bundles @vijaypjavvadi/sel2pw $bundled"
+          [ "$bundled" = "$v" ] || { echo "::error::extension would bundle sel2pw $bundled, expected $v"; exit 1; }
+
+      - name: Extension - package
+        working-directory: vscode-extension
+        # Dependencies are bundled on purpose: the extension imports @vijaypjavvadi/sel2pw at
+        # runtime, so no --no-dependencies here.
+        run: npx --yes @vscode/vsce@4.1.0 package
+
+      - name: Extension - publish to the Marketplace
+        if: env.DRY_RUN != 'true'
+        working-directory: vscode-extension
+        # Trusted publishing (no token): publisher vijaypjavvadi has a Trusted Publishing
+        # policy for this repository and this workflow file
+        # (marketplace.visualstudio.com/manage -> Trusted Publishing). vsce >= 4.1 exchanges
+        # the job's GitHub OIDC token for a short-lived Marketplace credential.
+        run: |
+          v=$(node -p "require('./package.json').version")
+          live=$(npx --yes @vscode/vsce@4.1.0 show vijaypjavvadi.sel2pw-vscode --json 2>/dev/null | node -p "try{JSON.parse(require('fs').readFileSync(0,'utf8')).versions[0].version}catch{''}")
+          if [ "$live" = "$v" ]; then
+            echo "sel2pw-vscode $v is already on the Marketplace - skipping"
+          else
+            npx --yes @vscode/vsce@4.1.0 publish --oidc --packagePath "sel2pw-vscode-$v.vsix"
+          fi
+
+      - name: GitHub release
+        if: env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # --generate-notes appends GitHub's list of merged PRs and "New Contributors" after
+        # RELEASE_NOTES.md, so community credit stays on the release page.
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "release $GITHUB_REF_NAME already exists - skipping"
+          else
+            v="${GITHUB_REF_NAME#v}"
+            gh release create "$GITHUB_REF_NAME" "vscode-extension/sel2pw-vscode-$v.vsix" \
+              --title "sel2pw $GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md --generate-notes
+          fi
+
+      - uses: actions/upload-artifact@v4
         with:
-          generate_release_notes: true
+          name: sel2pw-vscode
+          path: vscode-extension/sel2pw-vscode-*.vsix

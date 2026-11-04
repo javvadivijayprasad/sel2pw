@@ -5,7 +5,7 @@ labels: ["infrastructure", "security", "good first issue"]
 
 **Why**
 
-The repo runs tests in `.github/workflows/ci.yml` but has no security scanning. GitHub's CodeQL is free for public repositories and finds common bugs and security problems in TypeScript.
+The repo runs its checks in `.github/workflows/release.yml` but has no security scanning. GitHub's CodeQL is free for public repositories and finds common bugs and security problems in TypeScript.
 
 **What to do**
 
