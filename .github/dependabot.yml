@@ -12,6 +12,20 @@ updates:
         patterns: ["eslint*", "@typescript-eslint/*"]
       vitest:
         patterns: ["vitest", "@vitest/*"]
+    # Major upgrades of the toolchain are done on purpose, not by a bot: ESLint 9+ needs a
+    # flat-config migration (.eslintrc.json and --ext stop working), and @types/node must
+    # match the oldest supported Node (engines: >=18).
+    ignore:
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@typescript-eslint/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/*"
+        update-types: ["version-update:semver-major"]
     open-pull-requests-limit: 5
   - package-ecosystem: github-actions
     directory: "/"
