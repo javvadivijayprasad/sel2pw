@@ -4,6 +4,14 @@ All notable changes to `sel2pw` (the Converter). Format follows [Keep a Changelo
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Java lambdas become TypeScript arrow functions** (#20). `x -> x.click()` becomes `(x) => x.click()`; several parameters, typed parameters (`(String a, int b) ->` becomes `(a, b) =>`), generic types, `final`, no-argument lambdas and block bodies are all handled. Text inside strings and comments (`"a -> b"`, `// step 1 --> step 2`, XPath `parent::`) is never touched. Java switch arrows (`case X -> ...`) are left as they are and reported in `CONVERSION_REVIEW.md`. On the 12-project benchmark every lambda that reaches the output is converted; `bdd-anhtester` drops from 38 to 17 TypeScript errors.
+
+---
+
 ## [2.1.1] — VS Code extension back in sync; one release workflow
 
 ### Changed

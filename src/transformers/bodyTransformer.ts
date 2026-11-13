@@ -3,6 +3,7 @@ import { applyAssertionRewrites } from "./assertionMap";
 import { applyAdvancedApiRewrites } from "./advancedApiMap";
 import { applyHamcrestRewrites } from "./hamcrestMap";
 import { applyJavaIdiomRewrites } from "./javaIdiomMap";
+import { applyLambdaRewrites } from "./lambdaMap";
 import { ReviewItem } from "../types";
 
 /**
@@ -43,6 +44,13 @@ export function transformMethodBody(
   //     own stripper doesn't touch them). Playwright's `page` fixture
   //     provides everything Selenium needed driver setup for.
   body = stripJavaDriverBoilerplate(body);
+
+  // 1c) Java lambdas -> TypeScript arrow functions (`x -> ...` -> `(x) => ...`, #20).
+  //     Runs before the API passes so they see ordinary arrow functions. Only code is
+  //     rewritten; strings and comments (`"a -> b"`, `// a --> b`) are left alone.
+  const lambdas = applyLambdaRewrites(body, filePath);
+  body = lambdas.body;
+  warnings.push(...lambdas.warnings);
 
   // 2a) Hamcrest matcher rewrites (`assertThat(x, matcher)` two-arg form).
   // MUST run before apiMap, because apiMap's AssertJ-style rule

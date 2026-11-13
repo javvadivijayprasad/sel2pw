@@ -330,7 +330,7 @@ The IR boundary is deliberately clean. For Java, `parser/javaAst.ts` (a `java-pa
 Everything below is flagged in `CONVERSION_REVIEW.md` when it shows up in your code.
 
 - **Locators that match several elements.** Selenium's `findElement` quietly uses the first match; Playwright fails in strict mode. You may need to add `.first()` by hand ([#15](https://github.com/javvadivijayprasad/sel2pw/issues/15)).
-- **Newer Java syntax** such as lambdas (`x -> ...`), method references (`::`), casts and try-with-resources is not rewritten yet, so it shows up as TypeScript compile errors ([#20](https://github.com/javvadivijayprasad/sel2pw/issues/20)).
+- **Some newer Java syntax** is not rewritten yet: method references (`String::length`), Java streams (`.stream()...collect(...)`), casts and try-with-resources show up as TypeScript compile errors. Lambdas (`x -> ...`) are converted to arrow functions since 2.2.0. Java switch arrows (`case X -> ...`) are flagged for a manual rewrite.
 - **`@DataProvider`** becomes a test with a `TODO(sel2pw)` comment pointing at Playwright's [parameterised-test pattern](https://playwright.dev/docs/test-parameterize). Finish the loop by hand.
 - **`@Test(groups=...)`** becomes a comment; add Playwright [tags](https://playwright.dev/docs/test-annotations#tag-tests) by hand.
 - **iframes** (`switchTo().frame(...)`) become comments suggesting `page.frameLocator(...)`; scope the following locators by hand.
